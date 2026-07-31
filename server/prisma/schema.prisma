@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Map {
+  id            String         @id @default(uuid())
+  ownerId       String?        @map("owner_id")
+  name          String
+  description   String?
+  createdAt     DateTime       @default(now()) @map("created_at")
+  updatedAt     DateTime       @updatedAt @map("updated_at")
+
+  categories    NodeCategory[]
+  relationTypes RelationType[]
+  nodes         Node[]
+  edges         Edge[]
+  tags          Tag[]
+  nodeGroups    NodeGroup[]
+
+  @@map("maps")
+}
+
+// A purely visual/organizational container - wraps 2+ nodes into one draggable
+// unit (e.g. a couple) while every member keeps its own independent identity,
+// edges, notes and properties untouched. Deliberately owns no edges itself.
+model NodeGroup {
+  id        String   @id @default(uuid())
+  mapId     String   @map("map_id")
+  name      String   @default("")
+  color     String   @default("#4a4a6a")
+  posX      Float    @default(0) @map("pos_x")
+  posY      Float    @default(0) @map("pos_y")
+  width     Float    @default(240) @map("width")
+  height    Float    @default(160) @map("height")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  map       Map      @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  nodes     Node[]
+
+  @@map("node_groups")
+}
+
+model NodeCategory {
+  id        String   @id @default(uuid())
+  mapId     String   @map("map_id")
+  name      String
+  icon      String   @default("❓")
+  color     String   @default("#888888")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  map       Map      @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  nodes     Node[]
+
+  @@unique([mapId, name])
+  @@map("node_categories")
+}
+
+model RelationType {
+  id                    String   @id @default(uuid())
+  mapId                 String   @map("map_id")
+  name                  String
+  isDirectional         Boolean  @default(true) @map("is_directional")
+  isHierarchy           Boolean  @default(false) @map("is_hierarchy")
+  color                 String   @default("#cccccc")
+  lineStyle             String   @default("solid") @map("line_style")
+  maxOutgoingPerSource  Int?     @map("max_outgoing_per_source")
+  maxIncomingPerTarget  Int?     @map("max_incoming_per_target")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  map                   Map      @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  edges                 Edge[]
+
+  @@unique([mapId, name])
+  @@map("relation_types")
+}
+
+model Node {
+  id            String        @id @default(uuid())
+  mapId         String        @map("map_id")
+  categoryId    String?       @map("category_id")
+  name          String
+  iconOverride  String?       @map("icon_override")
+  colorOverride String?       @map("color_override")
+  notes         String        @default("")
+  properties    Json          @default("{}")
+  // Absolute canvas position when ungrouped; RELATIVE to the parent group's own
+  // posX/posY when groupId is set (matches React Flow's own parent/child
+  // coordinate convention exactly, so no conversion is needed at render time -
+  // only when a node joins/leaves a group, see groups.service.ts).
+  posX          Float?        @map("pos_x")
+  posY          Float?        @map("pos_y")
+  posZ          Float?        @map("pos_z")
+  groupId       String?       @map("group_id")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
+
+  map           Map           @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  category      NodeCategory? @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  group         NodeGroup?    @relation(fields: [groupId], references: [id], onDelete: SetNull)
+
+  outgoingEdges Edge[]        @relation("EdgeSource")
+  incomingEdges Edge[]        @relation("EdgeTarget")
+  nodeTags      NodeTag[]
+
+  @@index([mapId])
+  @@index([categoryId])
+  @@index([groupId])
+  @@map("nodes")
+}
+
+// Purely for grouping/filtering/analysis (e.g. "friends of Cris", "family of Michael",
+// "all fields belonging to table X") - deliberately has no icon/visual role, unlike
+// NodeCategory. A node can carry any number of tags.
+model Tag {
+  id        String    @id @default(uuid())
+  mapId     String    @map("map_id")
+  name      String
+  color     String    @default("#888888")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  map       Map       @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  nodeTags  NodeTag[]
+
+  @@unique([mapId, name])
+  @@map("tags")
+}
+
+model NodeTag {
+  nodeId String @map("node_id")
+  tagId  String @map("tag_id")
+
+  node   Node   @relation(fields: [nodeId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([nodeId, tagId])
+  @@map("node_tags")
+}
+
+model Edge {
+  id                String       @id @default(uuid())
+  mapId             String       @map("map_id")
+  sourceNodeId      String       @map("source_node_id")
+  targetNodeId      String       @map("target_node_id")
+  relationTypeId    String       @map("relation_type_id")
+  labelOverride     String?      @map("label_override")
+  properties        Json         @default("{}")
+  // Which specific connection point on each node this edge visually uses (e.g.
+  // "top"/"bottom"/"left"/"right"). Nullable: edges created without an explicit
+  // drag (seed data, quick-add) fall back to a sensible default in the adapter.
+  sourceHandle      String?      @map("source_handle")
+  targetHandle      String?      @map("target_handle")
+  // Per-edge visual overrides, same pattern as Node's iconOverride/colorOverride -
+  // lets two edges of the same relation type still look distinct from each other.
+  colorOverride     String?      @map("color_override")
+  lineStyleOverride String?      @map("line_style_override")
+  widthOverride     Float?       @map("width_override")
+  createdAt         DateTime     @default(now()) @map("created_at")
+  updatedAt         DateTime     @updatedAt @map("updated_at")
+
+  map            Map          @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  source         Node         @relation("EdgeSource", fields: [sourceNodeId], references: [id], onDelete: Cascade)
+  target         Node         @relation("EdgeTarget", fields: [targetNodeId], references: [id], onDelete: Cascade)
+  relationType   RelationType @relation(fields: [relationTypeId], references: [id], onDelete: Restrict)
+
+  @@unique([sourceNodeId, targetNodeId, relationTypeId])
+  @@index([mapId])
+  @@index([sourceNodeId])
+  @@index([targetNodeId])
+  @@index([relationTypeId])
+  @@map("edges")
+}

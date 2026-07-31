@@ -1,0 +1,17 @@
+node_modules/
+dist/
+build/
+*.tsbuildinfo
+.env
+.env.local
+client/.env
+client/.env.local
+server/prisma/dev.db
+*.log
+.DS_Store
+
+# Scratch reference screenshots used during development discussions
+/Screenshot *.png
+
+# Local Claude Code settings (machine-specific, not meant to be shared)
+.claude/settings.local.json
