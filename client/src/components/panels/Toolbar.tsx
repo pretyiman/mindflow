@@ -13,12 +13,12 @@ interface Props {
 export default function Toolbar({ mapName, onBack, graph }: Props) {
   const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const { searchQuery, setSearchQuery, selectedTagIds, connectedToNodeId } = useGraphStore();
-  const filterState = { searchQuery, selectedTagIds, connectedToNodeId };
+  const { searchQuery, setSearchQuery, selectedTagIds, selectedGroupId, connectedToNodeId } = useGraphStore();
+  const filterState = { searchQuery, selectedTagIds, selectedGroupId, connectedToNodeId };
   const filterActive = isFilterActive(filterState);
   // Search box covers name/tags/properties on its own - the advanced popover
-  // is only "active" for the two dimensions that still live there.
-  const advancedActive = selectedTagIds.length > 0 || connectedToNodeId !== null;
+  // is only "active" for the dimensions that still live there.
+  const advancedActive = selectedTagIds.length > 0 || selectedGroupId !== null || connectedToNodeId !== null;
   const matchCount = graph && filterActive ? filterGraph(graph, filterState).size : null;
 
   return (
@@ -56,7 +56,7 @@ export default function Toolbar({ mapName, onBack, graph }: Props) {
             <button
               className={`icon-tool-btn${advancedActive ? ' icon-tool-btn-active' : ''}`}
               onClick={() => setShowAdvanced((v) => !v)}
-              title="More filters: tags, connections"
+              title="More filters: tags, groups, connections"
             >
               🎚️
               {advancedActive && <span className="icon-tool-dot" />}

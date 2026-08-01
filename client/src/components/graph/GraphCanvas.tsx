@@ -135,8 +135,8 @@ export default function GraphCanvas({
     });
   }, []);
 
-  const { searchQuery, selectedTagIds, connectedToNodeId } = useGraphStore();
-  const filterState = { searchQuery, selectedTagIds, connectedToNodeId };
+  const { searchQuery, selectedTagIds, selectedGroupId, connectedToNodeId } = useGraphStore();
+  const filterState = { searchQuery, selectedTagIds, selectedGroupId, connectedToNodeId };
   const filterActive = isFilterActive(filterState);
   const matchedIds = useMemo(() => filterGraph(data, filterState), [data, JSON.stringify(filterState)]);
 
@@ -308,11 +308,18 @@ export default function GraphCanvas({
 
   // Dimming is a pure render-time concern - computed fresh from the matched-id set
   // rather than stored in state, so it never fights with drag/position updates.
+  // matchedIds only ever contains entity node ids (filterGraph works off
+  // data.nodes) - a group box's own visibility instead follows whether any of
+  // its members matched, so selecting a group (or a member matching a search/
+  // tag) lights up the box around them instead of always dimming it.
   const styledNodes = filterActive
-    ? nodes.map((n) => ({
-        ...n,
-        style: { ...n.style, opacity: matchedIds.has(n.id) ? 1 : DIMMED_OPACITY }
-      }))
+    ? nodes.map((n) => {
+        const visible =
+          n.type === 'group'
+            ? data.nodes.some((dn) => dn.groupId === n.id && matchedIds.has(dn.id))
+            : matchedIds.has(n.id);
+        return { ...n, style: { ...n.style, opacity: visible ? 1 : DIMMED_OPACITY } };
+      })
     : nodes;
   const styledEdges = filterActive
     ? edges.map((e) => ({

@@ -8,18 +8,26 @@ interface Props {
 }
 
 export default function FilterPanel({ graph }: Props) {
-  const { searchQuery, selectedTagIds, toggleFilterTag, connectedToNodeId, setConnectedToNodeId, clearFilters } =
-    useGraphStore();
+  const {
+    searchQuery,
+    selectedTagIds,
+    toggleFilterTag,
+    selectedGroupId,
+    setSelectedGroupId,
+    connectedToNodeId,
+    setConnectedToNodeId,
+    clearFilters
+  } = useGraphStore();
 
   const [showTagPicker, setShowTagPicker] = useState(false);
 
-  const filterState = { searchQuery, selectedTagIds, connectedToNodeId };
+  const filterState = { searchQuery, selectedTagIds, selectedGroupId, connectedToNodeId };
   const active = isFilterActive(filterState);
   const matchCount = active ? filterGraph(graph, filterState).size : graph.nodes.length;
   const selectedTags = graph.tags.filter((t) => selectedTagIds.includes(t.id));
   const connectableNodes = graph.nodes;
 
-  if (graph.tags.length === 0 && graph.nodes.length === 0) return null;
+  if (graph.tags.length === 0 && graph.groups.length === 0 && graph.nodes.length === 0) return null;
 
   return (
     <div className="filter-popover" onClick={(e) => e.stopPropagation()}>
@@ -73,6 +81,21 @@ export default function FilterPanel({ graph }: Props) {
             </div>
           )}
         </div>
+      )}
+
+      {graph.groups.length > 0 && (
+        <select value={selectedGroupId ?? ''} onChange={(e) => setSelectedGroupId(e.target.value || null)}>
+          <option value="">Group...</option>
+          {graph.groups.map((g) => {
+            const memberCount = graph.nodes.filter((n) => n.groupId === g.id).length;
+            const label = g.name.trim() || `Unnamed group`;
+            return (
+              <option key={g.id} value={g.id}>
+                {label} ({memberCount})
+              </option>
+            );
+          })}
+        </select>
       )}
 
       {connectableNodes.length > 0 && (

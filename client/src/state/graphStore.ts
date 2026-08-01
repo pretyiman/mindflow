@@ -3,12 +3,14 @@ import { create } from 'zustand';
 interface FilterState {
   searchQuery: string;
   selectedTagIds: string[];
+  selectedGroupId: string | null;
   connectedToNodeId: string | null;
 }
 
 const emptyFilterState: FilterState = {
   searchQuery: '',
   selectedTagIds: [],
+  selectedGroupId: null,
   connectedToNodeId: null
 };
 
@@ -36,6 +38,7 @@ interface GraphUiState extends FilterState {
 
   setSearchQuery: (query: string) => void;
   toggleFilterTag: (tagId: string) => void;
+  setSelectedGroupId: (groupId: string | null) => void;
   setConnectedToNodeId: (nodeId: string | null) => void;
   clearFilters: () => void;
 }
@@ -69,6 +72,7 @@ export const useGraphStore = create<GraphUiState>((set) => ({
         ? state.selectedTagIds.filter((id) => id !== tagId)
         : [...state.selectedTagIds, tagId]
     })),
+  setSelectedGroupId: (groupId) => set({ selectedGroupId: groupId }),
   setConnectedToNodeId: (nodeId) => set({ connectedToNodeId: nodeId }),
   clearFilters: () => set(emptyFilterState)
 }));
