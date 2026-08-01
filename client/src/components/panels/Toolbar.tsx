@@ -11,11 +11,14 @@ interface Props {
 }
 
 export default function Toolbar({ mapName, onBack, graph }: Props) {
-  const [showFilter, setShowFilter] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
-  const { selectedTagIds, propertyFilterKey, propertyFilterValue, connectedToNodeId } = useGraphStore();
-  const filterState = { selectedTagIds, propertyFilterKey, propertyFilterValue, connectedToNodeId };
+  const { searchQuery, setSearchQuery, selectedTagIds, connectedToNodeId } = useGraphStore();
+  const filterState = { searchQuery, selectedTagIds, connectedToNodeId };
   const filterActive = isFilterActive(filterState);
+  // Search box covers name/tags/properties on its own - the advanced popover
+  // is only "active" for the two dimensions that still live there.
+  const advancedActive = selectedTagIds.length > 0 || connectedToNodeId !== null;
   const matchCount = graph && filterActive ? filterGraph(graph, filterState).size : null;
 
   return (
@@ -28,19 +31,39 @@ export default function Toolbar({ mapName, onBack, graph }: Props) {
       </div>
 
       {graph && (
-        <div className="toolbar-group">
+        <div className="toolbar-group search-group">
+          <div className="search-input-wrap">
+            <span className="search-icon">🔍</span>
+            <input
+              className="search-input"
+              placeholder="Search nodes, tags, properties…"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button className="icon-btn search-clear" onClick={() => setSearchQuery('')} title="Clear search">
+                ✕
+              </button>
+            )}
+            {filterActive && matchCount !== null && (
+              <span className="search-count">
+                {matchCount}/{graph.nodes.length}
+              </span>
+            )}
+          </div>
+
           <div className="filter-trigger-wrap">
             <button
-              className={`icon-tool-btn${filterActive ? ' icon-tool-btn-active' : ''}`}
-              onClick={() => setShowFilter((v) => !v)}
-              title={filterActive && matchCount !== null ? `Filter (${matchCount}/${graph.nodes.length})` : 'Filter'}
+              className={`icon-tool-btn${advancedActive ? ' icon-tool-btn-active' : ''}`}
+              onClick={() => setShowAdvanced((v) => !v)}
+              title="More filters: tags, connections"
             >
-              🔍
-              {filterActive && <span className="icon-tool-dot" />}
+              🎚️
+              {advancedActive && <span className="icon-tool-dot" />}
             </button>
-            {showFilter && (
+            {showAdvanced && (
               <>
-                <div className="row-menu-scrim" onClick={() => setShowFilter(false)} />
+                <div className="row-menu-scrim" onClick={() => setShowAdvanced(false)} />
                 <FilterPanel graph={graph} />
               </>
             )}

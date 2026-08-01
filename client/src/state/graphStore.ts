@@ -1,16 +1,14 @@
 import { create } from 'zustand';
 
 interface FilterState {
+  searchQuery: string;
   selectedTagIds: string[];
-  propertyFilterKey: string;
-  propertyFilterValue: string;
   connectedToNodeId: string | null;
 }
 
 const emptyFilterState: FilterState = {
+  searchQuery: '',
   selectedTagIds: [],
-  propertyFilterKey: '',
-  propertyFilterValue: '',
   connectedToNodeId: null
 };
 
@@ -36,8 +34,8 @@ interface GraphUiState extends FilterState {
   setAccountSettingsOpen: (open: boolean) => void;
   setShareModalMapId: (mapId: string | null) => void;
 
+  setSearchQuery: (query: string) => void;
   toggleFilterTag: (tagId: string) => void;
-  setPropertyFilter: (key: string, value: string) => void;
   setConnectedToNodeId: (nodeId: string | null) => void;
   clearFilters: () => void;
 }
@@ -64,13 +62,13 @@ export const useGraphStore = create<GraphUiState>((set) => ({
   setAccountSettingsOpen: (open) => set({ isAccountSettingsOpen: open }),
   setShareModalMapId: (mapId) => set({ shareModalMapId: mapId }),
 
+  setSearchQuery: (query) => set({ searchQuery: query }),
   toggleFilterTag: (tagId) =>
     set((state) => ({
       selectedTagIds: state.selectedTagIds.includes(tagId)
         ? state.selectedTagIds.filter((id) => id !== tagId)
         : [...state.selectedTagIds, tagId]
     })),
-  setPropertyFilter: (key, value) => set({ propertyFilterKey: key, propertyFilterValue: value }),
   setConnectedToNodeId: (nodeId) => set({ connectedToNodeId: nodeId }),
   clearFilters: () => set(emptyFilterState)
 }));

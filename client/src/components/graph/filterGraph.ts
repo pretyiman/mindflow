@@ -1,22 +1,34 @@
-import type { GraphData } from '../../types/graph';
+import type { GraphData, GraphNode } from '../../types/graph';
 
 export interface FilterState {
+  searchQuery: string;
   selectedTagIds: string[];
-  propertyFilterKey: string;
-  propertyFilterValue: string;
   connectedToNodeId: string | null;
 }
 
 export function isFilterActive(filter: FilterState): boolean {
-  return (
-    filter.selectedTagIds.length > 0 ||
-    (filter.propertyFilterKey.trim() !== '' && filter.propertyFilterValue.trim() !== '') ||
-    filter.connectedToNodeId !== null
-  );
+  return filter.searchQuery.trim() !== '' || filter.selectedTagIds.length > 0 || filter.connectedToNodeId !== null;
 }
 
 function intersect(a: Set<string>, b: Set<string>): Set<string> {
   return new Set([...a].filter((x) => b.has(x)));
+}
+
+/**
+ * One search box covering everything a node can be found by: its own name,
+ * any tag it carries, or any property value regardless of which key it's
+ * stored under - so "Multan" finds it whether it's in `city`, `address`, or
+ * anything else, without having to know or pick the field first.
+ */
+function nodeMatchesSearch(node: GraphNode, needle: string, tagNameById: Map<string, string>): boolean {
+  if (node.name.toLowerCase().includes(needle)) return true;
+  for (const tagId of node.tagIds) {
+    if (tagNameById.get(tagId)?.toLowerCase().includes(needle)) return true;
+  }
+  for (const value of Object.values(node.properties)) {
+    if (value != null && String(value).toLowerCase().includes(needle)) return true;
+  }
+  return false;
 }
 
 /**
@@ -50,9 +62,10 @@ function buildNeighborMap(data: GraphData): Map<string, Set<string>> {
 
 /**
  * Pure client-side filter over the already-fetched graph - no backend query
- * language needed since the whole map is already in memory. Combines tag,
- * property, and connection filters with AND; each dimension itself is an OR
- * (e.g. matching ANY selected tag).
+ * language needed since the whole map is already in memory. Combines search,
+ * tag, and connection filters with AND; each dimension itself is an OR
+ * (e.g. matching ANY selected tag) - search matches are exact-node-only, no
+ * neighbor expansion (that's what "connected to" is for).
  */
 export function filterGraph(data: GraphData, filter: FilterState): Set<string> {
   const allIds = new Set(data.nodes.map((n) => n.id));
@@ -60,25 +73,20 @@ export function filterGraph(data: GraphData, filter: FilterState): Set<string> {
 
   let matched = allIds;
 
+  if (filter.searchQuery.trim()) {
+    const needle = filter.searchQuery.trim().toLowerCase();
+    const tagNameById = new Map(data.tags.map((t) => [t.id, t.name]));
+    const searchMatch = new Set(
+      data.nodes.filter((n) => nodeMatchesSearch(n, needle, tagNameById)).map((n) => n.id)
+    );
+    matched = intersect(matched, searchMatch);
+  }
+
   if (filter.selectedTagIds.length > 0) {
     const tagMatch = new Set(
       data.nodes.filter((n) => n.tagIds.some((id) => filter.selectedTagIds.includes(id))).map((n) => n.id)
     );
     matched = intersect(matched, tagMatch);
-  }
-
-  if (filter.propertyFilterKey.trim() && filter.propertyFilterValue.trim()) {
-    const key = filter.propertyFilterKey;
-    const needle = filter.propertyFilterValue.toLowerCase();
-    const propMatch = new Set(
-      data.nodes
-        .filter((n) => {
-          const value = n.properties[key];
-          return value != null && String(value).toLowerCase().includes(needle);
-        })
-        .map((n) => n.id)
-    );
-    matched = intersect(matched, propMatch);
   }
 
   if (filter.connectedToNodeId) {
@@ -106,13 +114,4 @@ export function filterGraph(data: GraphData, filter: FilterState): Set<string> {
   }
 
   return matched;
-}
-
-/** Union of all property keys present across the map's nodes, for the filter dropdown. */
-export function allPropertyKeys(data: GraphData): string[] {
-  const keys = new Set<string>();
-  for (const node of data.nodes) {
-    for (const key of Object.keys(node.properties)) keys.add(key);
-  }
-  return [...keys].sort();
 }

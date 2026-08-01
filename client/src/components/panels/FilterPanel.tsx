@@ -1,37 +1,32 @@
 import { useState } from 'react';
 import type { GraphData } from '../../types/graph';
 import { useGraphStore } from '../../state/graphStore';
-import { allPropertyKeys, filterGraph, isFilterActive } from '../graph/filterGraph';
+import { filterGraph, isFilterActive } from '../graph/filterGraph';
 
 interface Props {
   graph: GraphData;
 }
 
 export default function FilterPanel({ graph }: Props) {
-  const {
-    selectedTagIds,
-    toggleFilterTag,
-    propertyFilterKey,
-    propertyFilterValue,
-    setPropertyFilter,
-    connectedToNodeId,
-    setConnectedToNodeId,
-    clearFilters
-  } = useGraphStore();
+  const { searchQuery, selectedTagIds, toggleFilterTag, connectedToNodeId, setConnectedToNodeId, clearFilters } =
+    useGraphStore();
 
   const [showTagPicker, setShowTagPicker] = useState(false);
 
-  const filterState = { selectedTagIds, propertyFilterKey, propertyFilterValue, connectedToNodeId };
+  const filterState = { searchQuery, selectedTagIds, connectedToNodeId };
   const active = isFilterActive(filterState);
   const matchCount = active ? filterGraph(graph, filterState).size : graph.nodes.length;
-  const propertyKeys = allPropertyKeys(graph);
   const selectedTags = graph.tags.filter((t) => selectedTagIds.includes(t.id));
   const connectableNodes = graph.nodes;
 
-  if (graph.tags.length === 0 && propertyKeys.length === 0 && graph.nodes.length === 0) return null;
+  if (graph.tags.length === 0 && graph.nodes.length === 0) return null;
 
   return (
     <div className="filter-popover" onClick={(e) => e.stopPropagation()}>
+      <p className="hint-text" style={{ margin: 0, width: '100%' }}>
+        Narrow the search box further, or trace connections from a specific node.
+      </p>
+
       {graph.tags.length > 0 && (
         <div className="filter-tag-control">
           <button className="action-btn" onClick={() => setShowTagPicker((v) => !v)}>
@@ -78,28 +73,6 @@ export default function FilterPanel({ graph }: Props) {
             </div>
           )}
         </div>
-      )}
-
-      {propertyKeys.length > 0 && (
-        <>
-          <select
-            value={propertyFilterKey}
-            onChange={(e) => setPropertyFilter(e.target.value, propertyFilterValue)}
-          >
-            <option value="">Property...</option>
-            {propertyKeys.map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
-          <input
-            placeholder="value contains..."
-            value={propertyFilterValue}
-            onChange={(e) => setPropertyFilter(propertyFilterKey, e.target.value)}
-            style={{ width: 130 }}
-          />
-        </>
       )}
 
       {connectableNodes.length > 0 && (

@@ -135,8 +135,8 @@ export default function GraphCanvas({
     });
   }, []);
 
-  const { selectedTagIds, propertyFilterKey, propertyFilterValue, connectedToNodeId } = useGraphStore();
-  const filterState = { selectedTagIds, propertyFilterKey, propertyFilterValue, connectedToNodeId };
+  const { searchQuery, selectedTagIds, connectedToNodeId } = useGraphStore();
+  const filterState = { searchQuery, selectedTagIds, connectedToNodeId };
   const filterActive = isFilterActive(filterState);
   const matchedIds = useMemo(() => filterGraph(data, filterState), [data, JSON.stringify(filterState)]);
 
