@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { mapsApi } from './api/maps.api';
 import { useGraphData } from './hooks/useGraphData';
 import { useGraphStore } from './state/graphStore';
 import { useAuthStore } from './state/authStore';
+import { useThemeStore } from './state/themeStore';
 import AuthPage from './components/auth/AuthPage';
 import AccountBadge from './components/auth/AccountBadge';
 import GraphCanvas from './components/graph/GraphCanvas';
@@ -29,6 +30,12 @@ export default function App() {
   // link is the one URL that needs to survive a cold load, so its token is
   // read once here rather than pulling in a routing library for one route.
   const [inviteToken, setInviteToken] = useState(matchInviteToken);
+  const theme = useThemeStore((s) => s.theme);
+  // Applied to <html> so every screen (including the logged-out auth page)
+  // respects it, not just the parts of the tree AccountBadge sits above.
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
   const {
     currentMapId,
     setCurrentMapId,

@@ -17,10 +17,18 @@
   --accent-strong: #97a4ff;
   --accent-soft: rgba(124, 140, 250, 0.14);
   --accent-ring: rgba(124, 140, 250, 0.45);
+  --accent-contrast-text: #10101a;
+  --accent-wash: rgba(124, 140, 250, 0.05);
 
   --danger: #e5484d;
   --danger-strong: #ff6b70;
   --danger-soft: rgba(229, 72, 77, 0.14);
+  --danger-contrast-text: #ffd7d8;
+
+  --success-text: #6ee7a0;
+  --edge-label-bg: rgba(26, 26, 41, 0.85);
+  --auth-glow-1: rgba(124, 140, 250, 0.12);
+  --auth-glow-2: rgba(124, 140, 250, 0.06);
 
   --radius-sm: 6px;
   --radius-md: 10px;
@@ -40,6 +48,44 @@
   --ease: cubic-bezier(0.2, 0.6, 0.2, 1);
 
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+}
+
+/* Light theme - same indigo identity as the dark palette above, deepened
+   for AA contrast on white surfaces instead of pastel-on-dark. Toggled via
+   the account menu (see themeStore.ts), not by OS preference, so it always
+   wins over :root regardless of media query. */
+:root[data-theme='light'] {
+  --canvas: #f4f5fa;
+  --surface: #ffffff;
+  --surface-raised: #eef0f8;
+  --surface-hover: #e2e5f5;
+  --border: #dcdfee;
+  --border-strong: #c2c7e0;
+
+  --text: #1c1c2b;
+  --text-muted: #5b5b76;
+  --text-faint: #8b8ba3;
+
+  --accent: #5b63d9;
+  --accent-strong: #4750c4;
+  --accent-soft: rgba(91, 99, 217, 0.1);
+  --accent-ring: rgba(91, 99, 217, 0.35);
+  --accent-contrast-text: #ffffff;
+  --accent-wash: rgba(91, 99, 217, 0.06);
+
+  --danger: #d1373c;
+  --danger-strong: #b8262b;
+  --danger-soft: rgba(209, 55, 60, 0.08);
+  --danger-contrast-text: #7a1216;
+
+  --success-text: #1a7f4f;
+  --edge-label-bg: rgba(255, 255, 255, 0.88);
+  --auth-glow-1: rgba(91, 99, 217, 0.16);
+  --auth-glow-2: rgba(91, 99, 217, 0.08);
+
+  --shadow-sm: 0 2px 8px rgba(30, 34, 60, 0.08);
+  --shadow-md: 0 8px 24px rgba(30, 34, 60, 0.12);
+  --shadow-lg: 0 20px 56px rgba(30, 34, 60, 0.18);
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -172,7 +218,7 @@ html { overscroll-behavior-x: none; }
   height: 100%;
   border: 1.5px dashed var(--border-strong);
   border-radius: var(--radius-lg);
-  background: rgba(124, 140, 250, 0.05);
+  background: var(--accent-wash);
   transition: box-shadow 140ms var(--ease);
 }
 .flow-group-selected { box-shadow: 0 0 0 2px var(--accent); }
@@ -244,7 +290,7 @@ html { overscroll-behavior-x: none; }
 
 .flow-edge-label {
   position: absolute;
-  background: rgba(26, 26, 41, 0.85);
+  background: var(--edge-label-bg);
   backdrop-filter: blur(3px);
   color: var(--text-muted);
   padding: 2px 7px;
@@ -578,9 +624,9 @@ html { overscroll-behavior-x: none; }
 .action-btn:hover { background: var(--surface-hover); border-color: var(--border-strong); }
 .action-btn:active { transform: translateY(1px); }
 .action-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
-.action-btn.danger { background: var(--danger-soft); border-color: var(--danger); color: #ffd7d8; }
+.action-btn.danger { background: var(--danger-soft); border-color: var(--danger); color: var(--danger-contrast-text); }
 .action-btn.danger:hover { background: var(--danger); color: white; }
-.action-btn.primary { background: var(--accent); border-color: var(--accent); color: #10101a; font-weight: 600; }
+.action-btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-contrast-text); font-weight: 600; }
 .action-btn.primary:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
 
 .icon-btn {
@@ -624,8 +670,8 @@ html { overscroll-behavior-x: none; }
   align-items: center;
   justify-content: center;
   background:
-    radial-gradient(circle at 30% 20%, rgba(124, 140, 250, 0.12), transparent 55%),
-    radial-gradient(circle at 75% 75%, rgba(124, 140, 250, 0.06), transparent 50%),
+    radial-gradient(circle at 30% 20%, var(--auth-glow-1), transparent 55%),
+    radial-gradient(circle at 75% 75%, var(--auth-glow-2), transparent 50%),
     var(--canvas);
 }
 .auth-card {
@@ -649,7 +695,7 @@ html { overscroll-behavior-x: none; }
   margin-top: var(--space-2);
   background: var(--accent);
   border-color: var(--accent);
-  color: #10101a;
+  color: var(--accent-contrast-text);
   font-weight: 600;
 }
 .auth-card .action-btn:hover { background: var(--accent-strong); border-color: var(--accent-strong); }
@@ -671,7 +717,26 @@ html { overscroll-behavior-x: none; }
   top: var(--space-3);
   right: var(--space-4);
   z-index: 50;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
 }
+.theme-toggle-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  font-size: 1em;
+  cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: background 120ms var(--ease), border-color 120ms var(--ease);
+}
+.theme-toggle-btn:hover { background: var(--surface-raised); border-color: var(--border-strong); }
 .account-badge-trigger {
   display: flex;
   align-items: center;
@@ -702,7 +767,7 @@ html { overscroll-behavior-x: none; }
   flex-shrink: 0;
 }
 .account-menu-popover { min-width: 200px; }
-.success-text { color: #6ee7a0; margin-top: var(--space-2); font-size: 0.88em; }
+.success-text { color: var(--success-text); margin-top: var(--space-2); font-size: 0.88em; }
 
 .modal-overlay {
   position: fixed;
