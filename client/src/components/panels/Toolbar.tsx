@@ -15,6 +15,9 @@ interface Props {
   onOpenCategories: () => void;
   onOpenRelationTypes: () => void;
   onOpenTags: () => void;
+  onOpenShare: () => void;
+  canEdit: boolean;
+  isOwner: boolean;
 }
 
 export default function Toolbar({
@@ -27,7 +30,10 @@ export default function Toolbar({
   onNodeAdded,
   onOpenCategories,
   onOpenRelationTypes,
-  onOpenTags
+  onOpenTags,
+  onOpenShare,
+  canEdit,
+  isOwner
 }: Props) {
   const [showAddNode, setShowAddNode] = useState(false);
   const [newNodeName, setNewNodeName] = useState('');
@@ -80,7 +86,7 @@ export default function Toolbar({
         <button className="action-btn" onClick={() => setShowNewMap((v) => !v)}>
           + New Map
         </button>
-        {currentMapId && (
+        {currentMapId && canEdit && (
           <button
             className="action-btn danger"
             onClick={() => {
@@ -91,6 +97,11 @@ export default function Toolbar({
             }}
           >
             🗑 Delete Map
+          </button>
+        )}
+        {currentMapId && isOwner && (
+          <button className="action-btn" onClick={onOpenShare}>
+            👥 Share
           </button>
         )}
         {showNewMap && (
@@ -122,7 +133,7 @@ export default function Toolbar({
         )}
       </div>
 
-      {currentMapId && (
+      {currentMapId && canEdit && (
         <div className="toolbar-group">
           <button className="action-btn" onClick={onOpenCategories}>
             ⚙ Categories
@@ -139,7 +150,7 @@ export default function Toolbar({
         </div>
       )}
 
-      {showAddNode && graph && (
+      {showAddNode && canEdit && graph && (
         <div className="inline-form">
           <input
             autoFocus

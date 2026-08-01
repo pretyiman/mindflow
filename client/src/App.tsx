@@ -3,6 +3,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { mapsApi } from './api/maps.api';
 import { useGraphData } from './hooks/useGraphData';
 import { useGraphStore } from './state/graphStore';
+import { useAuthStore } from './state/authStore';
+import AuthPage from './components/auth/AuthPage';
 import GraphCanvas from './components/graph/GraphCanvas';
 import FilterPanel from './components/panels/FilterPanel';
 import NodeDetailPanel from './components/panels/NodeDetailPanel';
@@ -10,9 +12,11 @@ import Toolbar from './components/panels/Toolbar';
 import ManageCategoriesModal from './components/settings/ManageCategoriesModal';
 import ManageRelationTypesModal from './components/settings/ManageRelationTypesModal';
 import ManageTagsModal from './components/settings/ManageTagsModal';
+import ShareModal from './components/settings/ShareModal';
 
 export default function App() {
   const queryClient = useQueryClient();
+  const { token, user, logout } = useAuthStore();
   const {
     currentMapId,
     setCurrentMapId,
@@ -24,17 +28,27 @@ export default function App() {
     isManageRelationTypesOpen,
     setManageRelationTypesOpen,
     isManageTagsOpen,
-    setManageTagsOpen
+    setManageTagsOpen,
+    isShareOpen,
+    setShareOpen
   } = useGraphStore();
 
-  const mapsQuery = useQuery({ queryKey: ['maps'], queryFn: mapsApi.list });
-  const graphQuery = useGraphData(currentMapId);
+  const mapsQuery = useQuery({ queryKey: ['maps'], queryFn: mapsApi.list, enabled: !!token });
+  const graphQuery = useGraphData(token ? currentMapId : null);
+  const currentMap = mapsQuery.data?.find((m) => m.id === currentMapId);
+  // Defaults to the most restrictive role while the map list is still loading,
+  // so edit affordances never flash on before the real role is known.
+  const myRole = currentMap?.myRole ?? 'VIEWER';
+  const canEdit = myRole === 'OWNER' || myRole === 'EDITOR';
+  const isOwner = myRole === 'OWNER';
 
   useEffect(() => {
     if (!currentMapId && mapsQuery.data && mapsQuery.data.length > 0) {
       setCurrentMapId(mapsQuery.data[0].id);
     }
   }, [mapsQuery.data, currentMapId, setCurrentMapId]);
+
+  if (!token) return <AuthPage />;
 
   const handleCreateMap = async (name: string) => {
     const map = await mapsApi.create({ name });
@@ -52,6 +66,12 @@ export default function App() {
 
   return (
     <div className="app-container">
+      <div className="account-badge">
+        <span>{user?.email}</span>
+        <button className="icon-btn" onClick={logout} title="Log out">
+          ⎋
+        </button>
+      </div>
       <div className="main-column">
         <Toolbar
           maps={mapsQuery.data ?? []}
@@ -64,6 +84,9 @@ export default function App() {
           onOpenCategories={() => setManageCategoriesOpen(true)}
           onOpenRelationTypes={() => setManageRelationTypesOpen(true)}
           onOpenTags={() => setManageTagsOpen(true)}
+          onOpenShare={() => setShareOpen(true)}
+          canEdit={canEdit}
+          isOwner={isOwner}
         />
         {graphQuery.data && <FilterPanel graph={graphQuery.data} />}
         {graphQuery.data && currentMapId ? (
@@ -74,6 +97,7 @@ export default function App() {
             onNodeClick={selectNode}
             onBackgroundClick={clearSelection}
             onChanged={handleGraphChanged}
+            canEdit={canEdit}
           />
         ) : (
           <div className="empty-state">
@@ -88,6 +112,7 @@ export default function App() {
           selectedNodeId={selectedNodeId}
           onClose={clearSelection}
           onChanged={handleGraphChanged}
+          canEdit={canEdit}
         />
       )}
 
@@ -114,6 +139,9 @@ export default function App() {
           onClose={() => setManageTagsOpen(false)}
           onChanged={handleGraphChanged}
         />
+      )}
+      {isShareOpen && currentMapId && isOwner && (
+        <ShareModal mapId={currentMapId} onClose={() => setShareOpen(false)} />
       )}
     </div>
   );

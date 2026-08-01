@@ -5,7 +5,7 @@ import type { RFEntityNode } from './graphAdapter';
 import { useNodeInteraction } from './NodeInteractionContext';
 
 export default function CustomNode({ id, data, selected }: NodeProps<RFEntityNode>) {
-  const { categories, onQuickAdd } = useNodeInteraction();
+  const { categories, onQuickAdd, canEdit } = useNodeInteraction();
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [name, setName] = useState('');
   const [categoryId, setCategoryId] = useState(data.categoryId ?? '');
@@ -43,7 +43,7 @@ export default function CustomNode({ id, data, selected }: NodeProps<RFEntityNod
       <span className="flow-node-icon">{data.icon}</span>
       <span className="flow-node-name">{data.name}</span>
 
-      {selected && (
+      {selected && canEdit && (
         <button
           className="flow-node-quick-add"
           title="Add connected node"

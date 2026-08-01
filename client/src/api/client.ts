@@ -1,3 +1,4 @@
+import { useAuthStore } from '../state/authStore';
 import type { ApiErrorBody } from '../types/graph';
 
 const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api';
@@ -16,12 +17,16 @@ export class ApiError extends Error {
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  // getState() reads the store outside React - client.ts is a plain module,
+  // not a component, so it can't use the useAuthStore hook directly.
+  const token = useAuthStore.getState().token;
+  const headers: Record<string, string> = { ...(init?.headers as Record<string, string> | undefined) };
   // Only set Content-Type when there's actually a body - Fastify's JSON parser
   // rejects an empty body when this header is present (breaks bodyless DELETE).
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...init,
-    headers: init?.body ? { 'Content-Type': 'application/json', ...init.headers } : init?.headers
-  });
+  if (init?.body) headers['Content-Type'] = 'application/json';
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`${BASE_URL}${path}`, { ...init, headers });
 
   if (res.status === 204) return undefined as T;
 

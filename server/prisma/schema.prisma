@@ -8,21 +8,59 @@ datasource db {
 }
 
 model Map {
-  id            String         @id @default(uuid())
-  ownerId       String?        @map("owner_id")
+  id            String            @id @default(uuid())
+  ownerId       String?           @map("owner_id")
   name          String
   description   String?
-  createdAt     DateTime       @default(now()) @map("created_at")
-  updatedAt     DateTime       @updatedAt @map("updated_at")
+  createdAt     DateTime          @default(now()) @map("created_at")
+  updatedAt     DateTime          @updatedAt @map("updated_at")
 
+  owner         User?             @relation(fields: [ownerId], references: [id], onDelete: SetNull)
   categories    NodeCategory[]
   relationTypes RelationType[]
   nodes         Node[]
   edges         Edge[]
   tags          Tag[]
   nodeGroups    NodeGroup[]
+  collaborators MapCollaborator[]
 
   @@map("maps")
+}
+
+model User {
+  id             String            @id @default(uuid())
+  email          String            @unique
+  passwordHash   String            @map("password_hash")
+  name           String?
+  createdAt      DateTime          @default(now()) @map("created_at")
+  updatedAt      DateTime          @updatedAt @map("updated_at")
+
+  maps           Map[]
+  collaborations MapCollaborator[]
+
+  @@map("users")
+}
+
+enum CollaboratorRole {
+  VIEWER
+  EDITOR
+}
+
+// Grants a non-owner user access to a map. Distinct from Map.ownerId, which
+// remains the single source of truth for who owns/can-delete/can-share the
+// map - a collaborator row is never OWNER, only EDITOR or VIEWER.
+model MapCollaborator {
+  id        String           @id @default(uuid())
+  mapId     String           @map("map_id")
+  userId    String           @map("user_id")
+  role      CollaboratorRole
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  map       Map              @relation(fields: [mapId], references: [id], onDelete: Cascade)
+  user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([mapId, userId])
+  @@map("map_collaborators")
 }
 
 // A purely visual/organizational container - wraps 2+ nodes into one draggable

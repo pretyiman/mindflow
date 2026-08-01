@@ -60,6 +60,7 @@ interface Props {
   onNodeClick: (nodeId: string) => void;
   onBackgroundClick: () => void;
   onChanged: () => void;
+  canEdit: boolean;
 }
 
 interface PendingConnection {
@@ -77,7 +78,8 @@ export default function GraphCanvas({
   selectedNodeId,
   onNodeClick,
   onBackgroundClick,
-  onChanged
+  onChanged,
+  canEdit
 }: Props) {
   const [nodes, setNodes] = useState<RFNode[]>([]);
   const [edges, setEdges] = useState<RFEdge[]>([]);
@@ -164,6 +166,7 @@ export default function GraphCanvas({
   };
 
   const handleConnect = (connection: Connection) => {
+    if (!canEdit) return;
     if (!connection.source || !connection.target || connection.source === connection.target) return;
     setConnectError(null);
     setPendingRelationTypeId(data.relationTypes[0]?.id ?? '');
@@ -285,10 +288,10 @@ export default function GraphCanvas({
 
   return (
     <ReactFlowProvider>
-      <NodeInteractionContext.Provider value={{ categories: data.categories, onQuickAdd: handleQuickAdd }}>
+      <NodeInteractionContext.Provider value={{ categories: data.categories, onQuickAdd: handleQuickAdd, canEdit }}>
         <div className="graph-panel">
           <ViewportCenterRegistrar />
-          {groupableSelectedIds.length >= 2 && (
+          {canEdit && groupableSelectedIds.length >= 2 && (
             <div className="canvas-toast canvas-toast-action">
               <button className="action-btn" onClick={handleGroupSelected}>
                 ⛶ Group {groupableSelectedIds.length} nodes
@@ -333,6 +336,8 @@ export default function GraphCanvas({
             panActivationKeyCode={null}
             panOnScroll
             panOnScrollMode={PanOnScrollMode.Free}
+            nodesDraggable={canEdit}
+            nodesConnectable={canEdit}
             fitView
           >
             <Background />
@@ -393,7 +398,7 @@ export default function GraphCanvas({
                 <div className="modal-body">
                   <div className="property">
                     <label>Label</label>
-                    <input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} />
+                    <input value={editLabel} onChange={(e) => setEditLabel(e.target.value)} disabled={!canEdit} />
                   </div>
                   <div className="property">
                     <label>Color</label>
@@ -401,6 +406,7 @@ export default function GraphCanvas({
                       type="color"
                       value={editColor}
                       onChange={(e) => setEditColor(e.target.value)}
+                      disabled={!canEdit}
                     />
                   </div>
                   <div className="property">
@@ -408,6 +414,7 @@ export default function GraphCanvas({
                     <select
                       value={editLineStyle}
                       onChange={(e) => setEditLineStyle(e.target.value as (typeof LINE_STYLES)[number])}
+                      disabled={!canEdit}
                     >
                       {LINE_STYLES.map((s) => (
                         <option key={s} value={s}>
@@ -425,17 +432,20 @@ export default function GraphCanvas({
                       step={0.5}
                       value={editWidth}
                       onChange={(e) => setEditWidth(Number(e.target.value))}
+                      disabled={!canEdit}
                     />
                   </div>
                   {editError && <p className="error-text">{editError}</p>}
-                  <div className="actions">
-                    <button className="action-btn" onClick={confirmEditEdge}>
-                      Save
-                    </button>
-                    <button className="action-btn danger" onClick={confirmDeleteEdge}>
-                      🗑 Delete
-                    </button>
-                  </div>
+                  {canEdit && (
+                    <div className="actions">
+                      <button className="action-btn" onClick={confirmEditEdge}>
+                        Save
+                      </button>
+                      <button className="action-btn danger" onClick={confirmDeleteEdge}>
+                        🗑 Delete
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

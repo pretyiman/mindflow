@@ -1,9 +1,12 @@
+export type MapRole = 'OWNER' | 'EDITOR' | 'VIEWER';
+
 export interface MindMap {
   id: string;
   name: string;
   description: string | null;
   createdAt: string;
   updatedAt: string;
+  myRole: MapRole;
 }
 
 export interface NodeCategory {

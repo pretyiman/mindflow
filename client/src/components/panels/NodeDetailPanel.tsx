@@ -11,9 +11,10 @@ interface Props {
   selectedNodeId: string | null;
   onClose: () => void;
   onChanged: () => void;
+  canEdit: boolean;
 }
 
-export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChanged }: Props) {
+export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChanged, canEdit }: Props) {
   const node = graph.nodes.find((n) => n.id === selectedNodeId) ?? null;
   const group = !node ? (graph.groups.find((g) => g.id === selectedNodeId) ?? null) : null;
   const category = node ? graph.categories.find((c) => c.id === node.categoryId) : null;
@@ -73,21 +74,29 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
             value={groupName}
             onChange={(e) => setGroupName(e.target.value)}
             onBlur={handleSaveGroupName}
+            disabled={!canEdit}
           />
         </h2>
         <div className="property">
           <label>Color</label>
-          <input type="color" value={groupColor} onChange={(e) => handleSaveGroupColor(e.target.value)} />
+          <input
+            type="color"
+            value={groupColor}
+            onChange={(e) => handleSaveGroupColor(e.target.value)}
+            disabled={!canEdit}
+          />
         </div>
         <p className="hint-text">
           {memberCount} node{memberCount === 1 ? '' : 's'} in this group. Each keeps its own identity, notes
           and connections - this box is purely visual, so you can drag them as one unit.
         </p>
-        <div className="actions">
-          <button className="action-btn danger" onClick={handleUngroup}>
-            ⊟ Ungroup
-          </button>
-        </div>
+        {canEdit && (
+          <div className="actions">
+            <button className="action-btn danger" onClick={handleUngroup}>
+              ⊟ Ungroup
+            </button>
+          </div>
+        )}
       </div>
     );
   }
@@ -174,12 +183,17 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
           value={name}
           onChange={(e) => setName(e.target.value)}
           onBlur={handleSaveName}
+          disabled={!canEdit}
         />
       </h2>
 
       <div className="property">
         <label>Category</label>
-        <select value={node.categoryId ?? ''} onChange={(e) => handleCategoryChange(e.target.value || null)}>
+        <select
+          value={node.categoryId ?? ''}
+          onChange={(e) => handleCategoryChange(e.target.value || null)}
+          disabled={!canEdit}
+        >
           <option value="">No category</option>
           {graph.categories.map((c) => (
             <option key={c.id} value={c.id}>
@@ -204,6 +218,7 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
                   className={`tag-chip${active ? ' tag-chip-active' : ''}`}
                   style={active ? { background: t.color, borderColor: t.color } : { borderColor: t.color }}
                   onClick={() => handleToggleTag(t.id)}
+                  disabled={!canEdit}
                 >
                   {t.name}
                 </button>
@@ -226,6 +241,7 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
                 setProperties(next);
               }}
               onBlur={handleSaveProperties}
+              disabled={!canEdit}
             />
             <input
               placeholder="value"
@@ -236,24 +252,29 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
                 setProperties(next);
               }}
               onBlur={handleSaveProperties}
+              disabled={!canEdit}
             />
-            <button
-              className="icon-btn"
-              onClick={() => {
-                const next = properties.filter((_, i) => i !== idx);
-                setProperties(next);
-                nodesApi
-                  .update(node.id, { properties: Object.fromEntries(next) })
-                  .then(onChanged);
-              }}
-            >
-              ✕
-            </button>
+            {canEdit && (
+              <button
+                className="icon-btn"
+                onClick={() => {
+                  const next = properties.filter((_, i) => i !== idx);
+                  setProperties(next);
+                  nodesApi
+                    .update(node.id, { properties: Object.fromEntries(next) })
+                    .then(onChanged);
+                }}
+              >
+                ✕
+              </button>
+            )}
           </div>
         ))}
-        <button className="action-btn" onClick={() => setProperties([...properties, ['', '']])}>
-          + Add property
-        </button>
+        {canEdit && (
+          <button className="action-btn" onClick={() => setProperties([...properties, ['', '']])}>
+            + Add property
+          </button>
+        )}
       </div>
 
       <div className="property">
@@ -264,32 +285,35 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
           onBlur={handleSaveNotes}
           placeholder="Add detailed notes, specs, experience..."
           rows={6}
+          disabled={!canEdit}
         />
       </div>
 
       {error && <p className="error-text">{error}</p>}
 
-      <div className="actions">
-        <button
-          className="action-btn"
-          onClick={() =>
-            setAddingRelation((v) => {
-              const next = !v;
-              if (next && !relationTypeId && graph.relationTypes.length) {
-                setRelationTypeId(graph.relationTypes[0].id);
-              }
-              return next;
-            })
-          }
-        >
-          🔗 Add Relation
-        </button>
-        <button className="action-btn danger" onClick={handleDelete}>
-          🗑 Delete
-        </button>
-      </div>
+      {canEdit && (
+        <div className="actions">
+          <button
+            className="action-btn"
+            onClick={() =>
+              setAddingRelation((v) => {
+                const next = !v;
+                if (next && !relationTypeId && graph.relationTypes.length) {
+                  setRelationTypeId(graph.relationTypes[0].id);
+                }
+                return next;
+              })
+            }
+          >
+            🔗 Add Relation
+          </button>
+          <button className="action-btn danger" onClick={handleDelete}>
+            🗑 Delete
+          </button>
+        </div>
+      )}
 
-      {addingRelation && (
+      {canEdit && addingRelation && (
         <div className="add-relation-form">
           {graph.relationTypes.length === 0 ? (
             <p className="hint-text">Create a relation type first (Relation Types in the toolbar).</p>

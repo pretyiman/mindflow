@@ -1,12 +1,23 @@
 import { prisma } from '../db.js';
 import { NotFoundError } from '../errors.js';
 
-export async function listMaps() {
-  return prisma.map.findMany({ orderBy: { createdAt: 'desc' } });
+export async function listMaps(userId: string) {
+  const [maps, collaborations] = await Promise.all([
+    prisma.map.findMany({
+      where: { OR: [{ ownerId: userId }, { collaborators: { some: { userId } } }] },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.mapCollaborator.findMany({ where: { userId }, select: { mapId: true, role: true } })
+  ]);
+  const roleByMapId = new Map(collaborations.map((c) => [c.mapId, c.role]));
+  return maps.map((map) => ({
+    ...map,
+    myRole: map.ownerId === userId ? 'OWNER' : (roleByMapId.get(map.id) ?? 'VIEWER')
+  }));
 }
 
-export async function createMap(data: { name: string; description?: string }) {
-  return prisma.map.create({ data });
+export async function createMap(ownerId: string, data: { name: string; description?: string }) {
+  return prisma.map.create({ data: { ...data, ownerId } });
 }
 
 export async function getMap(id: string) {

@@ -9,6 +9,7 @@ export interface QuickAddPayload {
 export interface NodeInteractionContextValue {
   categories: NodeCategory[];
   onQuickAdd: (sourceNodeId: string, payload: QuickAddPayload) => Promise<void>;
+  canEdit: boolean;
 }
 
 export const NodeInteractionContext = createContext<NodeInteractionContextValue | null>(null);
