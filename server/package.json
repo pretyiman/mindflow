@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev",
     "prisma:studio": "prisma studio",
     "seed": "tsx src/seed.ts",
-    "migrate:legacy-owner": "tsx src/scripts/assignLegacyMaps.ts"
+    "migrate:legacy-owner": "tsx src/scripts/assignLegacyMaps.ts",
+    "migrate:default-relation-type": "tsx src/scripts/seedDefaultRelationType.ts"
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",

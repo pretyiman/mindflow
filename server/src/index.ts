@@ -11,6 +11,7 @@ import { tagsRoutes } from './routes/tags.routes.js';
 import { groupsRoutes } from './routes/groups.routes.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { collaboratorsRoutes } from './routes/collaborators.routes.js';
+import { invitesRoutes } from './routes/invites.routes.js';
 
 const app = Fastify({ logger: true });
 
@@ -29,6 +30,7 @@ await app.register(
     await api.register(groupsRoutes);
     await api.register(authRoutes);
     await api.register(collaboratorsRoutes);
+    await api.register(invitesRoutes);
   },
   { prefix: '/api' }
 );

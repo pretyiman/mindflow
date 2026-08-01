@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { mapsApi } from './api/maps.api';
 import { useGraphData } from './hooks/useGraphData';
@@ -6,6 +7,7 @@ import { useAuthStore } from './state/authStore';
 import AuthPage from './components/auth/AuthPage';
 import AccountBadge from './components/auth/AccountBadge';
 import GraphCanvas from './components/graph/GraphCanvas';
+import InviteAcceptPage from './components/invite/InviteAcceptPage';
 import NodeDetailPanel from './components/panels/NodeDetailPanel';
 import Toolbar from './components/panels/Toolbar';
 import MapsListPage from './components/maps/MapsListPage';
@@ -15,9 +17,18 @@ import ManageTagsModal from './components/settings/ManageTagsModal';
 import ShareModal from './components/settings/ShareModal';
 import AccountSettingsModal from './components/settings/AccountSettingsModal';
 
+function matchInviteToken(): string | null {
+  const match = window.location.pathname.match(/^\/invite\/([^/]+)$/);
+  return match ? match[1] : null;
+}
+
 export default function App() {
   const queryClient = useQueryClient();
   const { token } = useAuthStore();
+  // No router in this app (single view, switched by state) - a shared invite
+  // link is the one URL that needs to survive a cold load, so its token is
+  // read once here rather than pulling in a routing library for one route.
+  const [inviteToken, setInviteToken] = useState(matchInviteToken);
   const {
     currentMapId,
     setCurrentMapId,
@@ -45,6 +56,26 @@ export default function App() {
   const canEdit = myRole === 'OWNER' || myRole === 'EDITOR';
 
   if (!token) return <AuthPage />;
+
+  const dismissInvite = () => {
+    window.history.replaceState(null, '', '/');
+    setInviteToken(null);
+  };
+
+  if (inviteToken) {
+    return (
+      <InviteAcceptPage
+        token={inviteToken}
+        onAccepted={(mapId) => {
+          window.history.replaceState(null, '', '/');
+          setInviteToken(null);
+          queryClient.invalidateQueries({ queryKey: ['maps'] });
+          setCurrentMapId(mapId);
+        }}
+        onDismiss={dismissInvite}
+      />
+    );
+  }
 
   const handleCreateMap = async (name: string) => {
     const map = await mapsApi.create({ name });

@@ -1,6 +1,12 @@
 import { useEffect, useState } from 'react';
 import Modal from '../common/Modal';
-import { collaboratorsApi, type Collaborator, type CollaboratorRole } from '../../api/collaborators.api';
+import {
+  collaboratorsApi,
+  type Collaborator,
+  type CollaboratorRole,
+  type PendingInvite
+} from '../../api/collaborators.api';
+import { invitesApi } from '../../api/invites.api';
 import { ApiError } from '../../api/client';
 
 interface Props {
@@ -8,17 +14,26 @@ interface Props {
   onClose: () => void;
 }
 
+function inviteLink(token: string) {
+  return `${window.location.origin}/invite/${token}`;
+}
+
 export default function ShareModal({ mapId, onClose }: Props) {
   const [collaborators, setCollaborators] = useState<Collaborator[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<CollaboratorRole>('VIEWER');
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const refresh = () => {
     collaboratorsApi
       .list(mapId)
-      .then(setCollaborators)
+      .then((data) => {
+        setCollaborators(data.collaborators);
+        setPendingInvites(data.pendingInvites);
+      })
       .catch((err) => setError(err instanceof ApiError ? err.message : 'Failed to load collaborators'))
       .finally(() => setLoading(false));
   };
@@ -55,14 +70,34 @@ export default function ShareModal({ mapId, onClose }: Props) {
     }
   };
 
+  const handleCopyLink = async (invite: PendingInvite) => {
+    try {
+      await navigator.clipboard.writeText(inviteLink(invite.token));
+      setCopiedId(invite.id);
+      setTimeout(() => setCopiedId((id) => (id === invite.id ? null : id)), 2000);
+    } catch {
+      setError('Could not copy the link - your browser may be blocking clipboard access.');
+    }
+  };
+
+  const handleRevokeInvite = async (id: string) => {
+    try {
+      await invitesApi.remove(id);
+      refresh();
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'Failed to revoke invite');
+    }
+  };
+
   return (
     <Modal title="Share Map" onClose={onClose}>
-      {!loading && collaborators.length === 0 && (
+      {!loading && collaborators.length === 0 && pendingInvites.length === 0 && (
         <p className="hint-text">
-          Not shared with anyone yet. Invite someone by email - they need an existing account on
-          this app.
+          Not shared with anyone yet. Invite by email below - they'll need to log in to accept,
+          either from the email address or the link you can copy and send them directly.
         </p>
       )}
+
       {collaborators.length > 0 && (
         <table className="manage-table">
           <thead>
@@ -91,6 +126,39 @@ export default function ShareModal({ mapId, onClose }: Props) {
             ))}
           </tbody>
         </table>
+      )}
+
+      {pendingInvites.length > 0 && (
+        <>
+          <p className="hint-text" style={{ marginBottom: 8 }}>
+            Pending - not yet accepted:
+          </p>
+          <table className="manage-table">
+            <thead>
+              <tr>
+                <th>Email</th>
+                <th>Role</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {pendingInvites.map((inv) => (
+                <tr key={inv.id}>
+                  <td>{inv.email}</td>
+                  <td>{inv.role === 'EDITOR' ? 'Editor' : 'Viewer'}</td>
+                  <td style={{ display: 'flex', gap: 4 }}>
+                    <button className="icon-btn" onClick={() => handleCopyLink(inv)} title="Copy invite link">
+                      {copiedId === inv.id ? '✓' : '🔗'}
+                    </button>
+                    <button className="icon-btn" onClick={() => handleRevokeInvite(inv.id)} title="Revoke invite">
+                      🗑
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
 
       <div className="add-form">

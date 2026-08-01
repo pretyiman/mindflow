@@ -23,6 +23,7 @@ model Map {
   tags          Tag[]
   nodeGroups    NodeGroup[]
   collaborators MapCollaborator[]
+  invites       MapInvite[]
 
   @@map("maps")
 }
@@ -61,6 +62,26 @@ model MapCollaborator {
 
   @@unique([mapId, userId])
   @@map("map_collaborators")
+}
+
+// A shareable invite: created alongside an email invite so the owner can
+// hand the link directly to the recipient (chat, etc.) as a faster path
+// than waiting on them to notice an email. Still requires the recipient to
+// log in and explicitly accept - the token grants no unauthenticated
+// access. Single-use: acceptedAt is set the first time it's redeemed and
+// the token can't be reused after that.
+model MapInvite {
+  id         String           @id @default(uuid())
+  mapId      String           @map("map_id")
+  token      String           @unique
+  email      String
+  role       CollaboratorRole
+  createdAt  DateTime         @default(now()) @map("created_at")
+  acceptedAt DateTime?        @map("accepted_at")
+
+  map        Map              @relation(fields: [mapId], references: [id], onDelete: Cascade)
+
+  @@map("map_invites")
 }
 
 // A purely visual/organizational container - wraps 2+ nodes into one draggable

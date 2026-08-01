@@ -10,10 +10,25 @@ export interface Collaborator {
   user: { id: string; email: string; name: string | null };
 }
 
+export interface PendingInvite {
+  id: string;
+  mapId: string;
+  token: string;
+  email: string;
+  role: CollaboratorRole;
+  createdAt: string;
+  acceptedAt: string | null;
+}
+
+export interface CollaboratorsAndInvites {
+  collaborators: Collaborator[];
+  pendingInvites: PendingInvite[];
+}
+
 export const collaboratorsApi = {
-  list: (mapId: string) => api.get<Collaborator[]>(`/maps/${mapId}/collaborators`),
+  list: (mapId: string) => api.get<CollaboratorsAndInvites>(`/maps/${mapId}/collaborators`),
   invite: (mapId: string, data: { email: string; role: CollaboratorRole }) =>
-    api.post<Collaborator>(`/maps/${mapId}/collaborators`, data),
+    api.post<PendingInvite>(`/maps/${mapId}/collaborators`, data),
   updateRole: (id: string, role: CollaboratorRole) =>
     api.patch<Collaborator>(`/collaborators/${id}`, { role }),
   remove: (id: string) => api.delete<void>(`/collaborators/${id}`)

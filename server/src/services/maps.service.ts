@@ -17,7 +17,13 @@ export async function listMaps(userId: string) {
 }
 
 export async function createMap(ownerId: string, data: { name: string; description?: string }) {
-  return prisma.map.create({ data: { ...data, ownerId } });
+  const map = await prisma.map.create({ data: { ...data, ownerId } });
+  // So a brand-new map can be connected immediately, the same way a node
+  // doesn't require a category to exist first - relies on RelationType's own
+  // schema defaults (solid line, directional, #cccccc). Purely a starting
+  // point: rename it or add more from Relation Types like any other.
+  await prisma.relationType.create({ data: { mapId: map.id, name: 'Connection' } });
+  return map;
 }
 
 export async function getMap(id: string) {

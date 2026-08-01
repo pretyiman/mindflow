@@ -4,6 +4,7 @@ import { requireAuth } from '../plugins/auth.js';
 import { requireMapOwner, requireResourceMapOwner } from '../plugins/authorization.js';
 import { inviteCollaboratorSchema, updateCollaboratorSchema } from '../schemas/collaborators.schema.js';
 import * as collaboratorsService from '../services/collaborators.service.js';
+import { listPendingInvites } from '../services/invites.service.js';
 
 const lookupCollaborator = (id: string) =>
   prisma.mapCollaborator.findUnique({ where: { id }, select: { mapId: true } });
@@ -12,7 +13,13 @@ export async function collaboratorsRoutes(app: FastifyInstance) {
   app.get<{ Params: { mapId: string } }>(
     '/maps/:mapId/collaborators',
     { preHandler: [requireAuth, requireMapOwner()] },
-    async (request) => collaboratorsService.listCollaborators(request.params.mapId)
+    async (request) => {
+      const [collaborators, pendingInvites] = await Promise.all([
+        collaboratorsService.listCollaborators(request.params.mapId),
+        listPendingInvites(request.params.mapId)
+      ]);
+      return { collaborators, pendingInvites };
+    }
   );
 
   app.post<{ Params: { mapId: string } }>(
@@ -20,13 +27,13 @@ export async function collaboratorsRoutes(app: FastifyInstance) {
     { preHandler: [requireAuth, requireMapOwner()] },
     async (request, reply) => {
       const body = inviteCollaboratorSchema.parse(request.body);
-      const collaborator = await collaboratorsService.inviteCollaborator(
+      const invite = await collaboratorsService.inviteCollaborator(
         request.params.mapId,
         request.user!.id,
         body.email,
         body.role
       );
-      reply.status(201).send(collaborator);
+      reply.status(201).send(invite);
     }
   );
 
