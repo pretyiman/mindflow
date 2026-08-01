@@ -21,7 +21,10 @@ interface GraphUiState extends FilterState {
   isManageCategoriesOpen: boolean;
   isManageRelationTypesOpen: boolean;
   isManageTagsOpen: boolean;
-  isShareOpen: boolean;
+  isAccountSettingsOpen: boolean;
+  // The map a Share modal is open for - set from either the maps list page's
+  // row menu or (when open) the current board, independent of currentMapId.
+  shareModalMapId: string | null;
 
   setCurrentMapId: (mapId: string | null) => void;
   selectNode: (nodeId: string | null) => void;
@@ -30,7 +33,8 @@ interface GraphUiState extends FilterState {
   setManageCategoriesOpen: (open: boolean) => void;
   setManageRelationTypesOpen: (open: boolean) => void;
   setManageTagsOpen: (open: boolean) => void;
-  setShareOpen: (open: boolean) => void;
+  setAccountSettingsOpen: (open: boolean) => void;
+  setShareModalMapId: (mapId: string | null) => void;
 
   toggleFilterTag: (tagId: string) => void;
   setPropertyFilter: (key: string, value: string) => void;
@@ -45,7 +49,8 @@ export const useGraphStore = create<GraphUiState>((set) => ({
   isManageCategoriesOpen: false,
   isManageRelationTypesOpen: false,
   isManageTagsOpen: false,
-  isShareOpen: false,
+  isAccountSettingsOpen: false,
+  shareModalMapId: null,
   ...emptyFilterState,
 
   setCurrentMapId: (mapId) =>
@@ -56,7 +61,8 @@ export const useGraphStore = create<GraphUiState>((set) => ({
   setManageCategoriesOpen: (open) => set({ isManageCategoriesOpen: open }),
   setManageRelationTypesOpen: (open) => set({ isManageRelationTypesOpen: open }),
   setManageTagsOpen: (open) => set({ isManageTagsOpen: open }),
-  setShareOpen: (open) => set({ isShareOpen: open }),
+  setAccountSettingsOpen: (open) => set({ isAccountSettingsOpen: open }),
+  setShareModalMapId: (mapId) => set({ shareModalMapId: mapId }),
 
   toggleFilterTag: (tagId) =>
     set((state) => ({

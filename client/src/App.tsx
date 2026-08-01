@@ -1,22 +1,23 @@
-import { useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { mapsApi } from './api/maps.api';
 import { useGraphData } from './hooks/useGraphData';
 import { useGraphStore } from './state/graphStore';
 import { useAuthStore } from './state/authStore';
 import AuthPage from './components/auth/AuthPage';
+import AccountBadge from './components/auth/AccountBadge';
 import GraphCanvas from './components/graph/GraphCanvas';
-import FilterPanel from './components/panels/FilterPanel';
 import NodeDetailPanel from './components/panels/NodeDetailPanel';
 import Toolbar from './components/panels/Toolbar';
+import MapsListPage from './components/maps/MapsListPage';
 import ManageCategoriesModal from './components/settings/ManageCategoriesModal';
 import ManageRelationTypesModal from './components/settings/ManageRelationTypesModal';
 import ManageTagsModal from './components/settings/ManageTagsModal';
 import ShareModal from './components/settings/ShareModal';
+import AccountSettingsModal from './components/settings/AccountSettingsModal';
 
 export default function App() {
   const queryClient = useQueryClient();
-  const { token, user, logout } = useAuthStore();
+  const { token } = useAuthStore();
   const {
     currentMapId,
     setCurrentMapId,
@@ -29,8 +30,10 @@ export default function App() {
     setManageRelationTypesOpen,
     isManageTagsOpen,
     setManageTagsOpen,
-    isShareOpen,
-    setShareOpen
+    isAccountSettingsOpen,
+    setAccountSettingsOpen,
+    shareModalMapId,
+    setShareModalMapId
   } = useGraphStore();
 
   const mapsQuery = useQuery({ queryKey: ['maps'], queryFn: mapsApi.list, enabled: !!token });
@@ -40,13 +43,6 @@ export default function App() {
   // so edit affordances never flash on before the real role is known.
   const myRole = currentMap?.myRole ?? 'VIEWER';
   const canEdit = myRole === 'OWNER' || myRole === 'EDITOR';
-  const isOwner = myRole === 'OWNER';
-
-  useEffect(() => {
-    if (!currentMapId && mapsQuery.data && mapsQuery.data.length > 0) {
-      setCurrentMapId(mapsQuery.data[0].id);
-    }
-  }, [mapsQuery.data, currentMapId, setCurrentMapId]);
 
   if (!token) return <AuthPage />;
 
@@ -66,82 +62,84 @@ export default function App() {
 
   return (
     <div className="app-container">
-      <div className="account-badge">
-        <span>{user?.email}</span>
-        <button className="icon-btn" onClick={logout} title="Log out">
-          ⎋
-        </button>
-      </div>
-      <div className="main-column">
-        <Toolbar
+      <AccountBadge onOpenSettings={() => setAccountSettingsOpen(true)} />
+
+      {!currentMapId ? (
+        <MapsListPage
           maps={mapsQuery.data ?? []}
-          currentMapId={currentMapId}
-          onSelectMap={setCurrentMapId}
+          onOpenMap={setCurrentMapId}
           onCreateMap={handleCreateMap}
           onDeleteMap={handleDeleteMap}
-          graph={graphQuery.data ?? null}
-          onNodeAdded={handleGraphChanged}
-          onOpenCategories={() => setManageCategoriesOpen(true)}
-          onOpenRelationTypes={() => setManageRelationTypesOpen(true)}
-          onOpenTags={() => setManageTagsOpen(true)}
-          onOpenShare={() => setShareOpen(true)}
-          canEdit={canEdit}
-          isOwner={isOwner}
+          onShareMap={setShareModalMapId}
         />
-        {graphQuery.data && <FilterPanel graph={graphQuery.data} />}
-        {graphQuery.data && currentMapId ? (
-          <GraphCanvas
-            mapId={currentMapId}
-            data={graphQuery.data}
-            selectedNodeId={selectedNodeId}
-            onNodeClick={selectNode}
-            onBackgroundClick={clearSelection}
-            onChanged={handleGraphChanged}
-            canEdit={canEdit}
-          />
-        ) : (
-          <div className="empty-state">
-            {currentMapId ? 'Loading graph...' : 'Create or select a map to get started.'}
+      ) : (
+        <>
+          <div className="main-column">
+            <Toolbar
+              mapName={currentMap?.name ?? ''}
+              onBack={() => setCurrentMapId(null)}
+              graph={graphQuery.data ?? null}
+            />
+            {graphQuery.data ? (
+              <GraphCanvas
+                mapId={currentMapId}
+                data={graphQuery.data}
+                selectedNodeId={selectedNodeId}
+                onNodeClick={selectNode}
+                onBackgroundClick={clearSelection}
+                onChanged={handleGraphChanged}
+                canEdit={canEdit}
+                onOpenCategories={() => setManageCategoriesOpen(true)}
+                onOpenRelationTypes={() => setManageRelationTypesOpen(true)}
+                onOpenTags={() => setManageTagsOpen(true)}
+              />
+            ) : (
+              <div className="empty-state">Loading graph...</div>
+            )}
           </div>
-        )}
-      </div>
 
-      {graphQuery.data && (
-        <NodeDetailPanel
-          graph={graphQuery.data}
-          selectedNodeId={selectedNodeId}
-          onClose={clearSelection}
-          onChanged={handleGraphChanged}
-          canEdit={canEdit}
-        />
+          {graphQuery.data && selectedNodeId && (
+            <NodeDetailPanel
+              graph={graphQuery.data}
+              selectedNodeId={selectedNodeId}
+              onClose={clearSelection}
+              onChanged={handleGraphChanged}
+              canEdit={canEdit}
+            />
+          )}
+
+          {isManageCategoriesOpen && graphQuery.data && (
+            <ManageCategoriesModal
+              mapId={currentMapId}
+              graph={graphQuery.data}
+              onClose={() => setManageCategoriesOpen(false)}
+              onChanged={handleGraphChanged}
+            />
+          )}
+          {isManageRelationTypesOpen && graphQuery.data && (
+            <ManageRelationTypesModal
+              mapId={currentMapId}
+              graph={graphQuery.data}
+              onClose={() => setManageRelationTypesOpen(false)}
+              onChanged={handleGraphChanged}
+            />
+          )}
+          {isManageTagsOpen && graphQuery.data && (
+            <ManageTagsModal
+              mapId={currentMapId}
+              graph={graphQuery.data}
+              onClose={() => setManageTagsOpen(false)}
+              onChanged={handleGraphChanged}
+            />
+          )}
+        </>
       )}
 
-      {isManageCategoriesOpen && currentMapId && graphQuery.data && (
-        <ManageCategoriesModal
-          mapId={currentMapId}
-          graph={graphQuery.data}
-          onClose={() => setManageCategoriesOpen(false)}
-          onChanged={handleGraphChanged}
-        />
+      {shareModalMapId && (
+        <ShareModal mapId={shareModalMapId} onClose={() => setShareModalMapId(null)} />
       )}
-      {isManageRelationTypesOpen && currentMapId && graphQuery.data && (
-        <ManageRelationTypesModal
-          mapId={currentMapId}
-          graph={graphQuery.data}
-          onClose={() => setManageRelationTypesOpen(false)}
-          onChanged={handleGraphChanged}
-        />
-      )}
-      {isManageTagsOpen && currentMapId && graphQuery.data && (
-        <ManageTagsModal
-          mapId={currentMapId}
-          graph={graphQuery.data}
-          onClose={() => setManageTagsOpen(false)}
-          onChanged={handleGraphChanged}
-        />
-      )}
-      {isShareOpen && currentMapId && isOwner && (
-        <ShareModal mapId={currentMapId} onClose={() => setShareOpen(false)} />
+      {isAccountSettingsOpen && (
+        <AccountSettingsModal onClose={() => setAccountSettingsOpen(false)} />
       )}
     </div>
   );

@@ -15,5 +15,7 @@ export const authApi = {
   register: (data: { email: string; password: string; name?: string }) =>
     api.post<AuthResult>('/auth/register', data),
   login: (data: { email: string; password: string }) => api.post<AuthResult>('/auth/login', data),
-  me: () => api.get<AuthUser>('/auth/me')
+  me: () => api.get<AuthUser>('/auth/me'),
+  changePassword: (data: { currentPassword: string; newPassword: string }) =>
+    api.patch<void>('/auth/password', data)
 };

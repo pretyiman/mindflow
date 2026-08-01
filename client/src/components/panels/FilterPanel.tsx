@@ -31,9 +31,7 @@ export default function FilterPanel({ graph }: Props) {
   if (graph.tags.length === 0 && propertyKeys.length === 0 && graph.nodes.length === 0) return null;
 
   return (
-    <div className="filter-panel">
-      <span>Filter:</span>
-
+    <div className="filter-popover" onClick={(e) => e.stopPropagation()}>
       {graph.tags.length > 0 && (
         <div className="filter-tag-control">
           <button className="action-btn" onClick={() => setShowTagPicker((v) => !v)}>
