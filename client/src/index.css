@@ -178,17 +178,19 @@ html { overscroll-behavior-x: none; }
 .flow-node {
   position: relative;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  justify-content: center;
-  gap: var(--space-1);
-  width: 124px;
-  padding: var(--space-3) var(--space-2);
+  gap: 4px;
+  width: fit-content;
+  min-width: 90px;
+  max-width: 200px;
+  height: 44px;
+  padding: 0 var(--space-3);
   border-radius: var(--radius-md);
   background: var(--surface-raised);
   border: 1.5px solid var(--border-strong);
   color: var(--text);
-  text-align: center;
+  text-align: left;
   cursor: pointer;
   box-shadow: var(--shadow-sm);
   transition: transform 140ms var(--ease), box-shadow 140ms var(--ease);
@@ -200,8 +202,16 @@ html { overscroll-behavior-x: none; }
 .flow-node-selected {
   box-shadow: 0 0 0 2px var(--accent), var(--shadow-md);
 }
-.flow-node-icon { font-size: 1.55em; line-height: 1; }
-.flow-node-name { font-size: 0.85em; font-weight: 500; word-break: break-word; }
+.flow-node-icon { font-size: 1.15em; line-height: 1; flex-shrink: 0; }
+.flow-node-name {
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.3;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
 
 /* React Flow gives every group-type node its own default background/border -
    suppressed here so .flow-group below is the only visible layer. */

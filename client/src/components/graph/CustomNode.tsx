@@ -41,7 +41,9 @@ export default function CustomNode({ id, data, selected }: NodeProps<RFEntityNod
       <Handle type="source" position={Position.Right} id="right" className="flow-handle" />
 
       <span className="flow-node-icon">{data.icon}</span>
-      <span className="flow-node-name">{data.name}</span>
+      <span className="flow-node-name" title={data.name}>
+        {data.name}
+      </span>
 
       {selected && canEdit && (
         <button

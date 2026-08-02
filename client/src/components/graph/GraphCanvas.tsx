@@ -291,7 +291,7 @@ export default function GraphCanvas({
       // lands off-screen once the map has been dragged into a real layout.
       const center = getCurrentViewportCenter();
       const jitter = () => Math.random() * 80 - 40;
-      await nodesApi.create(mapId, {
+      const newNode = await nodesApi.create(mapId, {
         categoryId: newNodeCategoryId || null,
         name: newNodeName.trim(),
         posX: center ? center.x + jitter() : undefined,
@@ -301,6 +301,11 @@ export default function GraphCanvas({
       setShowAddNode(false);
       setAddNodeError(null);
       onChanged();
+      // The popover sits by the bottom-left icon-bar, but the node lands at
+      // viewport center to guarantee it's visible - selecting it immediately
+      // (opens the detail panel + selection ring) makes that jump obvious
+      // instead of reading as "did this even save?".
+      onNodeClick(newNode.id);
     } catch (err) {
       setAddNodeError(err instanceof ApiError ? err.message : 'Failed to add node');
     }
