@@ -11,40 +11,6 @@ This file is the map for an AI agent picking up this project cold. Read it befor
 **Keep it updated** whenever you change the schema, the API surface, or any non-obvious behavior
 described below - that's the whole point of this file existing.
 
-## Tech stack
-
-- **Server**: Fastify + Prisma + PostgreSQL, TypeScript, zod for request validation.
-- **Client**: React + Vite + TypeScript, `@xyflow/react` (React Flow) for the canvas, Zustand for
-  local UI state, TanStack Query for server state.
-- npm workspaces (`server`, `client`), one root `package.json` with `npm run dev` running both
-  concurrently.
-
-## Repo layout
-
-```
-server/
-  prisma/schema.prisma       - the whole data model
-  src/routes/*.routes.ts     - Fastify route registration + preHandler auth/authorization
-  src/schemas/*.schema.ts    - zod request-body validation
-  src/services/*.service.ts  - all actual business logic; routes are thin
-  src/plugins/auth.ts            - JWT verification, attaches request.user
-  src/plugins/authorization.ts   - requireMapAccess / requireMapOwner helpers
-  src/plugins/errorHandler.ts    - maps thrown errors (NotFoundError etc.) to HTTP responses
-  src/index.ts                - registers everything, mounts under /api
-client/
-  src/components/graph/       - GraphCanvas (React Flow wrapper), CustomNode, CustomEdge, GroupNode,
-                                 graphAdapter (DB shape -> React Flow shape), filterGraph
-  src/components/panels/      - Toolbar, FilterPanel, NodeDetailPanel
-  src/components/settings/    - Manage{Categories,RelationTypes,Tags}Modal, ShareModal, AccountSettingsModal
-  src/components/maps/        - MapsListPage
-  src/components/auth/        - AuthPage (login/register), AccountBadge
-  src/components/invite/      - InviteAcceptPage
-  src/api/*.api.ts            - one thin fetch wrapper per resource, all going through api/client.ts
-  src/state/                  - graphStore (UI state: selection/filters/modals), authStore, themeStore
-  src/App.tsx                 - single-view app, no router (one exception: /invite/:token is read
-                                 once from the URL on cold load - see App.tsx's matchInviteToken)
-```
-
 ## Core data model (`server/prisma/schema.prisma`)
 
 Treat this as frozen in shape unless the user explicitly asks for a schema change - it's been
@@ -89,33 +55,12 @@ See the "Mindflow Explained" map (built in-app, in the user's own account) for a
 - JWT in the response body (`Authorization: Bearer <token>`), stored client-side - not an httpOnly
   cookie. Deliberate tradeoff: this whole project is verified via curl/headless-Chrome scripts, and
   bearer tokens keep that trivial. Revisit before a real production deploy.
-- `requireAuth` (plugins/auth.ts) verifies the JWT and sets `request.user`.
-- `requireMapAccess(minRole)` / `requireMapOwner()` (plugins/authorization.ts) - applied as
-  `preHandler` per route. `VIEWER` < `EDITOR`; owner always passes. A collaborator is never
-  auto-promoted; sharing is managed via `MapCollaborator` rows (ShareModal.tsx + `/api/maps/:mapId/collaborators`)
-  or via invite links (`/api/invites`).
+- Access control: `plugins/auth.ts` + `plugins/authorization.ts`. Sharing is managed via
+  `MapCollaborator` rows (ShareModal.tsx + `/api/maps/:mapId/collaborators`) or invite links
+  (`/api/invites`) - read those files directly for the exact role-check mechanics.
 - Client-side, `myRole` on each map (`MapRole = 'OWNER' | 'EDITOR' | 'VIEWER'`) gates edit
   affordances (Add Node, quick-add, Save/Delete in modals) - display-only; the real enforcement is
   server-side.
-
-## API surface
-
-All routes mounted under `/api`. Pattern per resource: `routes/X.routes.ts` (thin, just
-preHandler + calls the service) → `schemas/X.schema.ts` (zod validation) → `services/X.service.ts`
-(all real logic, transactions, cross-entity side effects).
-
-| Resource | Routes |
-|---|---|
-| auth | `POST /auth/register`, `POST /auth/login`, `GET /auth/me`, `PATCH /auth/password` |
-| maps | `GET/POST /maps`, `GET/PATCH/DELETE /maps/:mapId`, `GET /maps/:mapId/graph` (the one call that returns the full `GraphData` bundle - categories/relationTypes/tags/nodes/edges/groups - the client's single source of truth per map) |
-| collaborators | `GET/POST /maps/:mapId/collaborators`, `PATCH/DELETE /collaborators/:id` |
-| invites | `GET /invites/:token`, `POST /invites/:token/accept`, `DELETE /invites/:id` |
-| categories | `GET/POST /maps/:mapId/categories`, `PATCH/DELETE /categories/:id` |
-| relationTypes | `GET/POST /maps/:mapId/relation-types`, `PATCH/DELETE /relation-types/:id` |
-| tags | `GET/POST /maps/:mapId/tags`, `PATCH/PUT/DELETE /tags/:id` |
-| nodes | `GET/POST /maps/:mapId/nodes`, `PATCH/DELETE /nodes/:id` |
-| edges | `GET/POST /maps/:mapId/edges`, `PATCH/DELETE /edges/:id` |
-| groups | `GET/POST /maps/:mapId/groups`, `PATCH/DELETE /groups/:id` |
 
 ## Feature implementation status
 
@@ -144,48 +89,19 @@ member is always left-aligned at a fixed margin; vertical spacing between member
 user leaves it as - grouping must never force members closer together, and dragging a member
 further apart must grow the box to follow, not block the drag.**
 
-Implementation (`server/src/services/groups.service.ts`):
-
-- `GROUP_MARGIN = 12` (px) - the gap between a member's edge and the group border, on all 4 sides.
-  Was 2px, then 8px, now 12px, each bump made because the user couldn't clearly see the margin
-  at the smaller values. If asked to change it again, it's this one constant.
-- `estimateNodeWidth(name)` - the server has no real font metrics, so width is approximated from
-  character count (`WIDTH_OVERHEAD=46 + name.length*8.5`), clamped to `[90, 200]` to match the
-  client CSS's own `.flow-node { min-width: 90px; max-width: 200px }` exactly. This is a known
-  approximation - it can be off by a few px on fonts/characters that render wider/narrower than the
-  8.5px/char estimate (verified: left/top/bottom margins measure exactly correct, right margin can
-  be ~4px tighter for wide characters). Never overflows the border either way. Don't try to
-  "fix" this precisely without real DOM measurement (would require moving the fit logic to the
-  client, a bigger change) - it's an accepted, documented tradeoff.
-- `resizeGroupToFitMembers(groupId)` is the **single source of truth** for box dimensions - width
-  from `Math.max(...members.map(estimateNodeWidth))`, height from the actual min/max Y spread of
-  members (not a fixed stacking gap). Every member's `posX` is force-reset to `GROUP_MARGIN`
-  (horizontal position is never a persisted layout choice); `posY` is preserved/shifted by whatever
-  delta keeps the box's top edge at the margin.
-- Triggered from `nodes.service.ts`'s `updateNode` whenever a grouped node's `posX`/`posY`/`name`
-  changes - this is the only hook point keeping the box in sync with drag or rename.
-- `createGroup` does the minimal work (assign `groupId`, translate absolute → group-relative
-  positions **preserving whatever spacing already existed** between the selected nodes - it must
-  never compress them into a tight stack) then calls `resizeGroupToFitMembers` immediately after,
-  so creation and later drag/rename-driven resizing can never disagree.
-- Client-side (`graphAdapter.ts`): grouped nodes deliberately do **not** get React Flow's
-  `extent: 'parent'`. That prop clamps a live drag to the group's *current* rendered box, which
-  makes it physically impossible to ever drag a member somewhere that would grow the box - the
-  server-side resize never gets the chance to run. The box growing/shrinking to follow its members
-  is the intended behavior.
-- `GraphCanvas.tsx`'s `handleNodeDragStop` calls `onChanged()` (refetch) after persisting a grouped
-  node's drag, to pick up the server's corrected box dimensions.
-
-## Popover cancel affordances
-
-Two floating popovers exist for node creation: the toolbar's "Add Node" (`GraphCanvas.tsx`,
-`.canvas-add-node-popover`) and a node's own "+" quick-add (`CustomNode.tsx`,
-`.flow-quick-add-popover`). Both must support **Escape**, **click-away**, and an explicit **Cancel**
-button - all three reset the input/category/error state without creating anything. If you add
-another creation popover, copy this exact pattern, and note the one non-obvious part: the
-click-away `document.addEventListener('mousedown', handler, true)` **must use the capture phase**.
-React Flow's own pane/node mousedown handlers call `stopPropagation()` for pan/drag-selection
-purposes, which silently swallows a bubble-phase document listener before it ever fires.
+- `GROUP_MARGIN = 12` (px, in `groups.service.ts`) - the gap between a member's edge and the group
+  border, on all 4 sides. Was 2px, then 8px, now 12px, each bump made because the user couldn't
+  clearly see the margin at the smaller values. If asked to change it again, it's this one constant.
+- `resizeGroupToFitMembers(groupId)` is the **single source of truth** for box dimensions - both
+  `createGroup` (on creation) and `nodes.service.ts`'s `updateNode` (on every drag or rename of a
+  grouped node) call it, so creation and later drag/rename-driven resizing can never disagree. Width
+  comes from `estimateNodeWidth` (a character-count approximation, since the server has no real font
+  metrics - see its own comment for the exact formula/tradeoff); height from the members' actual
+  vertical spread, not a fixed gap. Every member's `posX` is force-reset to `GROUP_MARGIN` on every
+  resize (horizontal position is never a persisted layout choice).
+- Client-side (`graphAdapter.ts`), grouped nodes deliberately do **not** get React Flow's
+  `extent: 'parent'` - see that file's comment for why (short version: it would block a drag from
+  ever growing the box, since the server-side resize never gets the chance to run).
 
 ## Dev workflow / environment quirks (Windows)
 
