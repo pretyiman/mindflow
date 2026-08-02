@@ -14,7 +14,7 @@ import {
   type NodeChange
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { GraphData, HandleId } from '../../types/graph';
 import { edgesApi } from '../../api/edges.api';
 import { nodesApi } from '../../api/nodes.api';
@@ -105,6 +105,38 @@ export default function GraphCanvas({
   const [newNodeName, setNewNodeName] = useState('');
   const [newNodeCategoryId, setNewNodeCategoryId] = useState('');
   const [addNodeError, setAddNodeError] = useState<string | null>(null);
+  const addNodePopoverRef = useRef<HTMLDivElement>(null);
+
+  const closeAddNode = useCallback(() => {
+    setShowAddNode(false);
+    setNewNodeName('');
+    setNewNodeCategoryId('');
+    setAddNodeError(null);
+  }, []);
+
+  // Esc or a click outside the popover both back out of "Add Node" without
+  // creating anything - same cancel affordance the other modals here already
+  // get for free from .modal-overlay, which this floating popover doesn't use.
+  useEffect(() => {
+    if (!showAddNode) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') closeAddNode();
+    };
+    const handleClickAway = (e: MouseEvent) => {
+      if (addNodePopoverRef.current && !addNodePopoverRef.current.contains(e.target as Node)) {
+        closeAddNode();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    // Capture phase - React Flow's pane stops propagation on its own mousedown
+    // handler (for pan/drag), which would otherwise swallow this before it
+    // ever reaches a bubble-phase document listener.
+    document.addEventListener('mousedown', handleClickAway, true);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('mousedown', handleClickAway, true);
+    };
+  }, [showAddNode, closeAddNode]);
 
   // Space is used as the selection-box modifier, but the browser's own
   // default behavior for Space is "activate whatever element currently has
@@ -171,9 +203,17 @@ export default function GraphCanvas({
       node.type === 'group'
         ? groupsApi.update(node.id, { posX: node.position.x, posY: node.position.y })
         : nodesApi.update(node.id, { posX: node.position.x, posY: node.position.y });
-    persist.catch(() => {
-      /* best-effort persistence; local drag position stays visually correct regardless */
-    });
+    persist
+      .then(() => {
+        // A grouped member's drag can trigger a server-side box resize (and
+        // forces its horizontal position back to the group's margin) - the
+        // local optimistic position from the drag itself doesn't know about
+        // that, so refetch to pick up the corrected state.
+        if (node.type !== 'group' && node.parentId) onChanged();
+      })
+      .catch(() => {
+        /* best-effort persistence; local drag position stays visually correct regardless */
+      });
   };
 
   const handleConnect = (connection: Connection) => {
@@ -400,7 +440,7 @@ export default function GraphCanvas({
                 <>
                   <ControlButton
                     className="canvas-tool-btn"
-                    onClick={() => setShowAddNode((v) => !v)}
+                    onClick={() => (showAddNode ? closeAddNode() : setShowAddNode(true))}
                     title="Add Node"
                   >
                     🔷
@@ -421,7 +461,7 @@ export default function GraphCanvas({
           </ReactFlow>
 
           {showAddNode && canEdit && (
-            <div className="canvas-add-node-popover">
+            <div className="canvas-add-node-popover" ref={addNodePopoverRef}>
               <input
                 autoFocus
                 placeholder="Node name"
@@ -437,9 +477,14 @@ export default function GraphCanvas({
                   </option>
                 ))}
               </select>
-              <button className="action-btn" onClick={handleAddNode}>
-                Save
-              </button>
+              <div className="canvas-add-node-actions">
+                <button className="action-btn" onClick={handleAddNode}>
+                  Save
+                </button>
+                <button className="action-btn" onClick={closeAddNode}>
+                  Cancel
+                </button>
+              </div>
               {addNodeError && <p className="error-text">{addNodeError}</p>}
             </div>
           )}

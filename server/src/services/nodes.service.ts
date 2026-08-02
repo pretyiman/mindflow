@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client';
 import { prisma } from '../db.js';
 import { NotFoundError } from '../errors.js';
+import { resizeGroupToFitMembers } from './groups.service.js';
 
 type NodeInput = {
   categoryId?: string | null;
@@ -57,7 +58,7 @@ async function getNodeOrThrow(id: string) {
 export async function updateNode(id: string, data: NodeUpdateInput) {
   const existing = await getNodeOrThrow(id);
 
-  return prisma.$transaction(async (tx) => {
+  const updated = await prisma.$transaction(async (tx) => {
     if (data.categoryId) await assertCategoryBelongsToMap(tx, existing.mapId, data.categoryId);
 
     return tx.node.update({
@@ -74,6 +75,15 @@ export async function updateNode(id: string, data: NodeUpdateInput) {
       }
     });
   });
+
+  // A grouped node stays independently draggable, and its name drives the
+  // group's own width - either changing means the box may need to resize,
+  // so re-fit it around the group's current members whenever either happens.
+  if (existing.groupId && (data.posX !== undefined || data.posY !== undefined || data.name !== undefined)) {
+    await resizeGroupToFitMembers(existing.groupId);
+  }
+
+  return updated;
 }
 
 export async function deleteNode(id: string) {

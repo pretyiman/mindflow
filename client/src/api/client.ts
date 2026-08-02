@@ -1,7 +1,11 @@
 import { useAuthStore } from '../state/authStore';
 import type { ApiErrorBody } from '../types/graph';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api';
+// Relative by default (proxied to the backend by Vite - see vite.config.ts)
+// rather than a hardcoded localhost:4000, so it keeps working when the app
+// is opened through a tunnel (ngrok etc.) from a different device, where
+// "localhost" would otherwise resolve to that device instead of this host.
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api';
 
 export class ApiError extends Error {
   code: string;

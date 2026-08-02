@@ -74,7 +74,13 @@ export function toFlowGraph(data: GraphData): { nodes: RFNode[]; edges: RFEdge[]
       type: 'entity',
       position: hasPosition ? { x: node.posX as number, y: node.posY as number } : fallbackPosition(index),
       parentId: node.groupId ?? undefined,
-      extent: node.groupId ? ('parent' as const) : undefined,
+      // No `extent: 'parent'` - that would clamp a drag to the group's
+      // *current* rendered box live, before the drag ever finishes, which
+      // makes it physically impossible to ever drag a member somewhere that
+      // would grow the box (the server-side auto-resize in
+      // groups.service.ts's resizeGroupToFitMembers never gets the chance to
+      // run). The box growing/shrinking to follow its members is the
+      // intended behavior, not something to prevent.
       data: {
         name: node.name,
         icon: node.iconOverride ?? category?.icon ?? '❓',

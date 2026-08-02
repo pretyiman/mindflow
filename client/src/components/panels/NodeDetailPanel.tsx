@@ -4,7 +4,9 @@ import { nodesApi } from '../../api/nodes.api';
 import { edgesApi } from '../../api/edges.api';
 import { tagsApi } from '../../api/tags.api';
 import { groupsApi } from '../../api/groups.api';
+import { categoriesApi } from '../../api/categories.api';
 import { ApiError } from '../../api/client';
+import { CATEGORY_ICON_CHOICES } from '../../constants/categoryIcons';
 
 interface Props {
   graph: GraphData;
@@ -28,6 +30,11 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
   const [relationTypeId, setRelationTypeId] = useState('');
   const [groupName, setGroupName] = useState('');
   const [groupColor, setGroupColor] = useState('#4a4a6a');
+  const [showNewCategory, setShowNewCategory] = useState(false);
+  const [newCatName, setNewCatName] = useState('');
+  const [newCatIcon, setNewCatIcon] = useState(CATEGORY_ICON_CHOICES[0]);
+  const [newCatColor, setNewCatColor] = useState('#5577aa');
+  const [newCatError, setNewCatError] = useState<string | null>(null);
 
   useEffect(() => {
     setName(node?.name ?? '');
@@ -135,6 +142,24 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
     onChanged();
   };
 
+  const handleCreateCategory = async () => {
+    if (!newCatName.trim()) return;
+    try {
+      const created = await categoriesApi.create(node.mapId, {
+        name: newCatName.trim(),
+        icon: newCatIcon,
+        color: newCatColor
+      });
+      setNewCatName('');
+      setNewCatError(null);
+      setShowNewCategory(false);
+      await nodesApi.update(node.id, { categoryId: created.id });
+      onChanged();
+    } catch (err) {
+      setNewCatError(err instanceof ApiError ? err.message : 'Failed to create category');
+    }
+  };
+
   const handleToggleTag = async (tagId: string) => {
     const nextTagIds = node.tagIds.includes(tagId)
       ? node.tagIds.filter((id) => id !== tagId)
@@ -189,18 +214,61 @@ export default function NodeDetailPanel({ graph, selectedNodeId, onClose, onChan
 
       <div className="property">
         <label>Category</label>
-        <select
-          value={node.categoryId ?? ''}
-          onChange={(e) => handleCategoryChange(e.target.value || null)}
-          disabled={!canEdit}
-        >
-          <option value="">No category</option>
-          {graph.categories.map((c) => (
-            <option key={c.id} value={c.id}>
-              {c.icon} {c.name}
-            </option>
-          ))}
-        </select>
+        <div className="category-select-row">
+          <select
+            value={node.categoryId ?? ''}
+            onChange={(e) => handleCategoryChange(e.target.value || null)}
+            disabled={!canEdit}
+          >
+            <option value="">No category</option>
+            {graph.categories.map((c) => (
+              <option key={c.id} value={c.id}>
+                {c.icon} {c.name}
+              </option>
+            ))}
+          </select>
+          {canEdit && (
+            <div className="category-create-wrap">
+              <button
+                className="category-add-btn"
+                onClick={() => setShowNewCategory((v) => !v)}
+                title="Create new category"
+              >
+                +
+              </button>
+              {showNewCategory && (
+                <>
+                  <div className="row-menu-scrim" onClick={() => setShowNewCategory(false)} />
+                  <div className="category-create-popover">
+                    <select value={newCatIcon} onChange={(e) => setNewCatIcon(e.target.value)}>
+                      {CATEGORY_ICON_CHOICES.map((icon) => (
+                        <option key={icon} value={icon}>
+                          {icon}
+                        </option>
+                      ))}
+                    </select>
+                    <input
+                      autoFocus
+                      placeholder="Category name"
+                      value={newCatName}
+                      onChange={(e) => setNewCatName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateCategory()}
+                    />
+                    <input
+                      type="color"
+                      value={newCatColor}
+                      onChange={(e) => setNewCatColor(e.target.value)}
+                    />
+                    <button className="action-btn" onClick={handleCreateCategory}>
+                      Create
+                    </button>
+                    {newCatError && <p className="error-text">{newCatError}</p>}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="property">

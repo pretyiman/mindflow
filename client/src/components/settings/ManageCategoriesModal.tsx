@@ -3,6 +3,7 @@ import Modal from '../common/Modal';
 import type { GraphData } from '../../types/graph';
 import { categoriesApi } from '../../api/categories.api';
 import { ApiError } from '../../api/client';
+import { CATEGORY_ICON_CHOICES } from '../../constants/categoryIcons';
 
 interface Props {
   mapId: string;
@@ -11,14 +12,9 @@ interface Props {
   onChanged: () => void;
 }
 
-const EMOJI_CHOICES = [
-  '👤', '👨', '👩', '🧑', '👴', '👵', '👶', '👨‍🏫', '👩‍🏫', '🧑‍💻',
-  '⚛️', '⚡', '🖼️', '🗄️', '🔌', '🐛', '🛡️', '🎯', '📄', '❓'
-];
-
 export default function ManageCategoriesModal({ mapId, graph, onClose, onChanged }: Props) {
   const [name, setName] = useState('');
-  const [icon, setIcon] = useState(EMOJI_CHOICES[0]);
+  const [icon, setIcon] = useState(CATEGORY_ICON_CHOICES[0]);
   const [color, setColor] = useState('#5577aa');
   const [error, setError] = useState<string | null>(null);
 
@@ -92,7 +88,7 @@ export default function ManageCategoriesModal({ mapId, graph, onClose, onChanged
 
       <div className="add-form">
         <select value={icon} onChange={(e) => setIcon(e.target.value)}>
-          {EMOJI_CHOICES.map((e) => (
+          {CATEGORY_ICON_CHOICES.map((e) => (
             <option key={e} value={e}>
               {e}
             </option>
