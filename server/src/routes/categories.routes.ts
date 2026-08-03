@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
-import { requireAuth } from '../plugins/auth.js';
+import { requireAuth, requireVerifiedEmail } from '../plugins/auth.js';
 import { requireMapAccess, requireResourceMapAccess } from '../plugins/authorization.js';
 import { createCategorySchema, updateCategorySchema } from '../schemas/categories.schema.js';
 import * as categoriesService from '../services/categories.service.js';
@@ -17,7 +17,7 @@ export async function categoriesRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { mapId: string } }>(
     '/maps/:mapId/categories',
-    { preHandler: [requireAuth, requireMapAccess('EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireMapAccess('EDITOR')] },
     async (request, reply) => {
       const body = createCategorySchema.parse(request.body);
       const category = await categoriesService.createCategory(request.params.mapId, body);
@@ -27,7 +27,7 @@ export async function categoriesRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>(
     '/categories/:id',
-    { preHandler: [requireAuth, requireResourceMapAccess(lookupCategory, 'EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapAccess(lookupCategory, 'EDITOR')] },
     async (request) => {
       const body = updateCategorySchema.parse(request.body);
       return categoriesService.updateCategory(request.params.id, body);
@@ -36,7 +36,7 @@ export async function categoriesRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string }; Querystring: { force?: string } }>(
     '/categories/:id',
-    { preHandler: [requireAuth, requireResourceMapAccess(lookupCategory, 'EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapAccess(lookupCategory, 'EDITOR')] },
     async (request, reply) => {
       await categoriesService.deleteCategory(request.params.id, request.query.force === 'true');
       reply.status(204).send();

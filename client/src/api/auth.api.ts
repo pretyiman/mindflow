@@ -4,6 +4,7 @@ export interface AuthUser {
   id: string;
   email: string;
   name: string | null;
+  emailVerified: boolean;
 }
 
 export interface AuthResult {
@@ -17,5 +18,8 @@ export const authApi = {
   login: (data: { email: string; password: string }) => api.post<AuthResult>('/auth/login', data),
   me: () => api.get<AuthUser>('/auth/me'),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
-    api.patch<void>('/auth/password', data)
+    api.patch<void>('/auth/password', data),
+  verifyEmail: (token: string) => api.post<AuthUser>('/auth/verify-email', { token }),
+  resendVerification: () => api.post<void>('/auth/resend-verification'),
+  googleSignIn: (credential: string) => api.post<AuthResult>('/auth/google', { credential })
 };

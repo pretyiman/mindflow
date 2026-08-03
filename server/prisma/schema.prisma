@@ -33,17 +33,43 @@ model Map {
 }
 
 model User {
-  id             String            @id @default(uuid())
-  email          String            @unique
-  passwordHash   String            @map("password_hash")
-  name           String?
-  createdAt      DateTime          @default(now()) @map("created_at")
-  updatedAt      DateTime          @updatedAt @map("updated_at")
+  id                 String                   @id @default(uuid())
+  email              String                   @unique
+  // Nullable - a Google-only account (see auth.service.ts's googleSignIn())
+  // never sets a password at all, rather than storing an unusable placeholder
+  // hash. login()/changePassword() must handle null explicitly.
+  passwordHash       String?                  @map("password_hash")
+  // Google's stable per-account subject id ('sub' claim) - set once a Google
+  // sign-in links to this row, whether the account originated from email/
+  // password registration or from Google itself.
+  googleId           String?                  @unique @map("google_id")
+  name               String?
+  emailVerified      Boolean                  @default(false) @map("email_verified")
+  createdAt          DateTime                 @default(now()) @map("created_at")
+  updatedAt          DateTime                 @updatedAt @map("updated_at")
 
-  maps           Map[]
-  collaborations MapCollaborator[]
+  maps               Map[]
+  collaborations     MapCollaborator[]
+  verificationTokens EmailVerificationToken[]
 
   @@map("users")
+}
+
+// Single-use, time-limited token emailed on registration (and on request via
+// resendVerification) to confirm the user actually controls the address they
+// signed up with - see auth.service.ts's register()/verifyEmail()/
+// resendVerification(). Deleted once redeemed; a stale/expired row is just
+// left for the next resend to replace, no cleanup job needed.
+model EmailVerificationToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("email_verification_tokens")
 }
 
 enum CollaboratorRole {

@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
-import { requireAuth } from '../plugins/auth.js';
+import { requireAuth, requireVerifiedEmail } from '../plugins/auth.js';
 import { requireResourceMapOwner } from '../plugins/authorization.js';
 import * as invitesService from '../services/invites.service.js';
 
@@ -25,7 +25,7 @@ export async function invitesRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>(
     '/invites/:id',
-    { preHandler: [requireAuth, requireResourceMapOwner(lookupInvite)] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapOwner(lookupInvite)] },
     async (request, reply) => {
       await invitesService.removeInvite(request.params.id);
       reply.status(204).send();

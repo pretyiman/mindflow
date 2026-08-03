@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
-import { requireAuth } from '../plugins/auth.js';
+import { requireAuth, requireVerifiedEmail } from '../plugins/auth.js';
 import { requireMapOwner, requireResourceMapOwner } from '../plugins/authorization.js';
 import { inviteCollaboratorSchema, updateCollaboratorSchema } from '../schemas/collaborators.schema.js';
 import * as collaboratorsService from '../services/collaborators.service.js';
@@ -24,7 +24,7 @@ export async function collaboratorsRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { mapId: string } }>(
     '/maps/:mapId/collaborators',
-    { preHandler: [requireAuth, requireMapOwner()] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireMapOwner()] },
     async (request, reply) => {
       const body = inviteCollaboratorSchema.parse(request.body);
       const invite = await collaboratorsService.inviteCollaborator(
@@ -39,7 +39,7 @@ export async function collaboratorsRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>(
     '/collaborators/:id',
-    { preHandler: [requireAuth, requireResourceMapOwner(lookupCollaborator)] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapOwner(lookupCollaborator)] },
     async (request) => {
       const body = updateCollaboratorSchema.parse(request.body);
       return collaboratorsService.updateCollaboratorRole(request.params.id, body.role);
@@ -48,7 +48,7 @@ export async function collaboratorsRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>(
     '/collaborators/:id',
-    { preHandler: [requireAuth, requireResourceMapOwner(lookupCollaborator)] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapOwner(lookupCollaborator)] },
     async (request, reply) => {
       await collaboratorsService.removeCollaborator(request.params.id);
       reply.status(204).send();

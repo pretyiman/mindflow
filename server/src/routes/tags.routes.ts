@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
-import { requireAuth } from '../plugins/auth.js';
+import { requireAuth, requireVerifiedEmail } from '../plugins/auth.js';
 import { requireMapAccess, requireResourceMapAccess } from '../plugins/authorization.js';
 import { createTagSchema, setNodeTagsSchema, updateTagSchema } from '../schemas/tags.schema.js';
 import * as tagsService from '../services/tags.service.js';
@@ -18,7 +18,7 @@ export async function tagsRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { mapId: string } }>(
     '/maps/:mapId/tags',
-    { preHandler: [requireAuth, requireMapAccess('EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireMapAccess('EDITOR')] },
     async (request, reply) => {
       const body = createTagSchema.parse(request.body);
       const tag = await tagsService.createTag(request.params.mapId, body);
@@ -28,7 +28,7 @@ export async function tagsRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>(
     '/tags/:id',
-    { preHandler: [requireAuth, requireResourceMapAccess(lookupTag, 'EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapAccess(lookupTag, 'EDITOR')] },
     async (request) => {
       const body = updateTagSchema.parse(request.body);
       return tagsService.updateTag(request.params.id, body);
@@ -37,7 +37,7 @@ export async function tagsRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string }; Querystring: { force?: string } }>(
     '/tags/:id',
-    { preHandler: [requireAuth, requireResourceMapAccess(lookupTag, 'EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapAccess(lookupTag, 'EDITOR')] },
     async (request, reply) => {
       await tagsService.deleteTag(request.params.id, request.query.force === 'true');
       reply.status(204).send();
@@ -46,7 +46,7 @@ export async function tagsRoutes(app: FastifyInstance) {
 
   app.put<{ Params: { id: string } }>(
     '/nodes/:id/tags',
-    { preHandler: [requireAuth, requireResourceMapAccess(lookupNode, 'EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapAccess(lookupNode, 'EDITOR')] },
     async (request) => {
       const body = setNodeTagsSchema.parse(request.body);
       return nodesService.setNodeTags(request.params.id, body.tagIds);

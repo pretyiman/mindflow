@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { prisma } from '../db.js';
-import { requireAuth } from '../plugins/auth.js';
+import { requireAuth, requireVerifiedEmail } from '../plugins/auth.js';
 import { requireMapAccess, requireResourceMapAccess } from '../plugins/authorization.js';
 import { createEdgeSchema, updateEdgeSchema } from '../schemas/edges.schema.js';
 import * as edgesService from '../services/edges.service.js';
@@ -16,7 +16,7 @@ export async function edgesRoutes(app: FastifyInstance) {
 
   app.post<{ Params: { mapId: string } }>(
     '/maps/:mapId/edges',
-    { preHandler: [requireAuth, requireMapAccess('EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireMapAccess('EDITOR')] },
     async (request, reply) => {
       const body = createEdgeSchema.parse(request.body);
       const edge = await edgesService.createEdge(request.params.mapId, body);
@@ -26,7 +26,7 @@ export async function edgesRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { id: string } }>(
     '/edges/:id',
-    { preHandler: [requireAuth, requireResourceMapAccess(lookupEdge, 'EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapAccess(lookupEdge, 'EDITOR')] },
     async (request) => {
       const body = updateEdgeSchema.parse(request.body);
       return edgesService.updateEdge(request.params.id, body);
@@ -35,7 +35,7 @@ export async function edgesRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>(
     '/edges/:id',
-    { preHandler: [requireAuth, requireResourceMapAccess(lookupEdge, 'EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireResourceMapAccess(lookupEdge, 'EDITOR')] },
     async (request, reply) => {
       await edgesService.deleteEdge(request.params.id);
       reply.status(204).send();

@@ -1,7 +1,8 @@
 import type { FastifyReply, FastifyRequest } from 'fastify';
 import jwt from 'jsonwebtoken';
+import { prisma } from '../db.js';
 import { env } from '../env.js';
-import { UnauthorizedError } from '../errors.js';
+import { ForbiddenError, UnauthorizedError } from '../errors.js';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -28,5 +29,22 @@ export async function requireAuth(request: FastifyRequest, _reply: FastifyReply)
     request.user = { id: payload.sub };
   } catch {
     throw new UnauthorizedError('Invalid or expired token');
+  }
+}
+
+/**
+ * Hard-gates content creation/editing behind a verified email address - run
+ * this AFTER requireAuth (it reads request.user) on every mutating route
+ * except account-management ones (password change, verify/resend, logout)
+ * and accepting an invite someone else sent, which aren't "creating or
+ * editing content" in the sense this gate exists for.
+ */
+export async function requireVerifiedEmail(request: FastifyRequest) {
+  const user = await prisma.user.findUnique({
+    where: { id: request.user!.id },
+    select: { emailVerified: true }
+  });
+  if (!user?.emailVerified) {
+    throw new ForbiddenError('Please verify your email address before making changes');
   }
 }

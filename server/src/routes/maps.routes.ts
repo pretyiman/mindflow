@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { requireAuth } from '../plugins/auth.js';
+import { requireAuth, requireVerifiedEmail } from '../plugins/auth.js';
 import { requireMapAccess } from '../plugins/authorization.js';
 import { createMapSchema, updateMapSchema } from '../schemas/maps.schema.js';
 import * as mapsService from '../services/maps.service.js';
@@ -9,7 +9,7 @@ export async function mapsRoutes(app: FastifyInstance) {
     return mapsService.listMaps(request.user!.id);
   });
 
-  app.post('/maps', { preHandler: requireAuth }, async (request, reply) => {
+  app.post('/maps', { preHandler: [requireAuth, requireVerifiedEmail] }, async (request, reply) => {
     const body = createMapSchema.parse(request.body);
     const map = await mapsService.createMap(request.user!.id, body);
     reply.status(201).send(map);
@@ -23,7 +23,7 @@ export async function mapsRoutes(app: FastifyInstance) {
 
   app.patch<{ Params: { mapId: string } }>(
     '/maps/:mapId',
-    { preHandler: [requireAuth, requireMapAccess('EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireMapAccess('EDITOR')] },
     async (request) => {
       const body = updateMapSchema.parse(request.body);
       return mapsService.updateMap(request.params.mapId, body);
@@ -32,7 +32,7 @@ export async function mapsRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { mapId: string } }>(
     '/maps/:mapId',
-    { preHandler: [requireAuth, requireMapAccess('EDITOR')] },
+    { preHandler: [requireAuth, requireVerifiedEmail, requireMapAccess('EDITOR')] },
     async (request, reply) => {
       await mapsService.deleteMap(request.params.mapId);
       reply.status(204).send();

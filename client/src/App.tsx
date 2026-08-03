@@ -7,6 +7,8 @@ import { useAuthStore } from './state/authStore';
 import { useThemeStore } from './state/themeStore';
 import AuthPage from './components/auth/AuthPage';
 import AccountBadge from './components/auth/AccountBadge';
+import VerifyEmailGate from './components/auth/VerifyEmailGate';
+import VerifyEmailPage from './components/auth/VerifyEmailPage';
 import GraphCanvas from './components/graph/GraphCanvas';
 import InviteAcceptPage from './components/invite/InviteAcceptPage';
 import NodeDetailPanel from './components/panels/NodeDetailPanel';
@@ -23,13 +25,20 @@ function matchInviteToken(): string | null {
   return match ? match[1] : null;
 }
 
+function matchVerifyEmailToken(): string | null {
+  const match = window.location.pathname.match(/^\/verify-email\/([^/]+)$/);
+  return match ? match[1] : null;
+}
+
 export default function App() {
   const queryClient = useQueryClient();
-  const { token } = useAuthStore();
-  // No router in this app (single view, switched by state) - a shared invite
-  // link is the one URL that needs to survive a cold load, so its token is
-  // read once here rather than pulling in a routing library for one route.
+  const { token, user } = useAuthStore();
+  // No router in this app (single view, switched by state) - shared links
+  // (an invite, a verification email) are the only URLs that need to survive
+  // a cold load, so their tokens are read once here rather than pulling in a
+  // routing library for two routes.
   const [inviteToken, setInviteToken] = useState(matchInviteToken);
+  const [verifyEmailToken, setVerifyEmailToken] = useState(matchVerifyEmailToken);
   const theme = useThemeStore((s) => s.theme);
   // Applied to <html> so every screen (including the logged-out auth page)
   // respects it, not just the parts of the tree AccountBadge sits above.
@@ -62,7 +71,24 @@ export default function App() {
   const myRole = currentMap?.myRole ?? 'VIEWER';
   const canEdit = myRole === 'OWNER' || myRole === 'EDITOR';
 
+  // Handled before the logged-in check: someone can open a verification link
+  // in a browser where they aren't (or no longer are) logged in, and the
+  // verify-email call itself doesn't require auth.
+  if (verifyEmailToken) {
+    return (
+      <VerifyEmailPage
+        token={verifyEmailToken}
+        onDone={() => {
+          window.history.replaceState(null, '', '/');
+          setVerifyEmailToken(null);
+        }}
+      />
+    );
+  }
+
   if (!token) return <AuthPage />;
+
+  if (user && !user.emailVerified) return <VerifyEmailGate />;
 
   const dismissInvite = () => {
     window.history.replaceState(null, '', '/');

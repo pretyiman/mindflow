@@ -1,6 +1,12 @@
 import type { FastifyInstance } from 'fastify';
 import { requireAuth } from '../plugins/auth.js';
-import { changePasswordSchema, loginSchema, registerSchema } from '../schemas/auth.schema.js';
+import {
+  changePasswordSchema,
+  googleSignInSchema,
+  loginSchema,
+  registerSchema,
+  verifyEmailSchema
+} from '../schemas/auth.schema.js';
 import * as authService from '../services/auth.service.js';
 
 export async function authRoutes(app: FastifyInstance) {
@@ -23,5 +29,20 @@ export async function authRoutes(app: FastifyInstance) {
     const body = changePasswordSchema.parse(request.body);
     await authService.changePassword(request.user!.id, body.currentPassword, body.newPassword);
     reply.status(204).send();
+  });
+
+  app.post('/auth/verify-email', async (request) => {
+    const body = verifyEmailSchema.parse(request.body);
+    return authService.verifyEmail(body.token);
+  });
+
+  app.post('/auth/resend-verification', { preHandler: requireAuth }, async (request, reply) => {
+    await authService.resendVerification(request.user!.id);
+    reply.status(204).send();
+  });
+
+  app.post('/auth/google', async (request) => {
+    const body = googleSignInSchema.parse(request.body);
+    return authService.googleSignIn(body.credential);
   });
 }

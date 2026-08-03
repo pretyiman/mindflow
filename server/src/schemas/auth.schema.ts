@@ -15,3 +15,11 @@ export const changePasswordSchema = z.object({
   currentPassword: z.string().min(1),
   newPassword: z.string().min(8).max(200)
 });
+
+export const verifyEmailSchema = z.object({
+  token: z.string().min(1)
+});
+
+export const googleSignInSchema = z.object({
+  credential: z.string().min(1)
+});

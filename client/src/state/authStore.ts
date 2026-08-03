@@ -6,6 +6,7 @@ interface AuthState {
   token: string | null;
   user: AuthUser | null;
   setAuth: (token: string, user: AuthUser) => void;
+  updateUser: (user: AuthUser) => void;
   logout: () => void;
 }
 
@@ -18,6 +19,9 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       user: null,
       setAuth: (token, user) => set({ token, user }),
+      // Refreshes just the user record (e.g. after verifying email) without
+      // touching the existing token/session.
+      updateUser: (user) => set({ user }),
       logout: () => set({ token: null, user: null })
     }),
     { name: 'mindflow-auth' }
