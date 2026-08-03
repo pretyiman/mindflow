@@ -374,7 +374,16 @@ html { overscroll-behavior-x: none; }
   flex-direction: column;
   min-width: 0;
   overflow-y: auto;
-  padding: var(--space-6) max(var(--space-6), calc((100% - 760px) / 2));
+  padding-top: var(--space-6);
+  padding-bottom: var(--space-6);
+  padding-left: max(var(--space-6), calc((100% - 760px) / 2));
+  /* Same centering as the left side, but with an extra reservation so this
+     column's content never runs under the fixed top-right account-badge
+     (theme toggle + avatar + email) - that badge sits outside normal flow,
+     so nothing here naturally makes room for it otherwise. Bit up 280px
+     covers a realistically long email; wide viewports just use the
+     centering value once it exceeds that anyway. */
+  padding-right: max(calc(var(--space-6) + 280px), calc((100% - 760px) / 2));
 }
 .maps-page-header {
   display: flex;
@@ -867,6 +876,12 @@ html { overscroll-behavior-x: none; }
   font-weight: 700;
   font-size: 0.85em;
   flex-shrink: 0;
+}
+.account-email {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .account-menu-popover { min-width: 200px; }
 .success-text { color: var(--success-text); margin-top: var(--space-2); font-size: 0.88em; }
