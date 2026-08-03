@@ -2,6 +2,7 @@
   "name": "mindmup3d",
   "private": true,
   "version": "0.1.0",
+  "type": "module",
   "workspaces": [
     "server",
     "client"
@@ -15,6 +16,7 @@
     "build": "npm run build -w server && npm run build -w client"
   },
   "devDependencies": {
+    "@vercel/node": "^5.9.3",
     "concurrently": "^9.1.0"
   }
 }

@@ -1,5 +1,9 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  // Needed for db.ts's Neon driver adapter path, used only on Vercel - see
+  // that file's comment for why. Render and local dev use the plain client
+  // and never touch this.
+  previewFeatures = ["driverAdapters"]
 }
 
 datasource db {
