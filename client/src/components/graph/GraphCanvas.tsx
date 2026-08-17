@@ -3,6 +3,7 @@ import {
   ControlButton,
   Controls,
   MiniMap,
+  Panel,
   PanOnScrollMode,
   ReactFlow,
   ReactFlowProvider,
@@ -23,6 +24,7 @@ import { ApiError } from '../../api/client';
 import { useGraphStore } from '../../state/graphStore';
 import CustomEdge from './CustomEdge';
 import CustomNode from './CustomNode';
+import { exportGraphAsPdf, exportGraphAsSvg } from './exportGraph';
 import GroupNode from './GroupNode';
 import { filterGraph, isFilterActive } from './filterGraph';
 import { toFlowGraph, type RFEdge, type RFNode } from './graphAdapter';
@@ -56,6 +58,7 @@ const edgeTypes = { relation: CustomEdge };
 
 interface Props {
   mapId: string;
+  mapName: string;
   data: GraphData;
   selectedNodeId: string | null;
   onNodeClick: (nodeId: string) => void;
@@ -78,6 +81,7 @@ const LINE_STYLES = ['solid', 'dashed', 'dotted'] as const;
 
 export default function GraphCanvas({
   mapId,
+  mapName,
   data,
   selectedNodeId,
   onNodeClick,
@@ -106,6 +110,10 @@ export default function GraphCanvas({
   const [newNodeCategoryId, setNewNodeCategoryId] = useState('');
   const [addNodeError, setAddNodeError] = useState<string | null>(null);
   const addNodePopoverRef = useRef<HTMLDivElement>(null);
+  const graphPanelRef = useRef<HTMLDivElement>(null);
+  const [showExportMenu, setShowExportMenu] = useState(false);
+  const [exporting, setExporting] = useState(false);
+  const [exportError, setExportError] = useState<string | null>(null);
 
   const closeAddNode = useCallback(() => {
     setShowAddNode(false);
@@ -351,6 +359,21 @@ export default function GraphCanvas({
     }
   };
 
+  const handleExport = async (format: 'svg' | 'pdf') => {
+    if (!graphPanelRef.current) return;
+    setExportError(null);
+    setExporting(true);
+    setShowExportMenu(false);
+    try {
+      const exportFn = format === 'svg' ? exportGraphAsSvg : exportGraphAsPdf;
+      await exportFn(graphPanelRef.current, nodes, mapName);
+    } catch (err) {
+      setExportError(err instanceof Error ? err.message : 'Failed to export map');
+    } finally {
+      setExporting(false);
+    }
+  };
+
   // Dimming is a pure render-time concern - computed fresh from the matched-id set
   // rather than stored in state, so it never fights with drag/position updates.
   // matchedIds only ever contains entity node ids (filterGraph works off
@@ -379,8 +402,13 @@ export default function GraphCanvas({
   return (
     <ReactFlowProvider>
       <NodeInteractionContext.Provider value={{ categories: data.categories, onQuickAdd: handleQuickAdd, canEdit }}>
-        <div className="graph-panel">
+        <div className="graph-panel" ref={graphPanelRef}>
           <ViewportCenterRegistrar />
+          {exportError && (
+            <div className="canvas-toast error-text" onClick={() => setExportError(null)}>
+              {exportError}
+            </div>
+          )}
           {canEdit && groupableSelectedIds.length >= 2 && (
             <div className="canvas-toast canvas-toast-action">
               <button className="action-btn" onClick={handleGroupSelected}>
@@ -458,6 +486,25 @@ export default function GraphCanvas({
               )}
             </Controls>
             <MiniMap pannable zoomable />
+            <Panel position="top-right" className="export-panel">
+              <button
+                className="export-trigger-btn"
+                onClick={() => setShowExportMenu((v) => !v)}
+                title="Export map as SVG or PDF"
+                disabled={exporting}
+              >
+                {exporting ? '⏳' : '⬇️'} Export
+              </button>
+              {showExportMenu && (
+                <>
+                  <div className="row-menu-scrim" onClick={() => setShowExportMenu(false)} />
+                  <div className="row-menu-popover export-menu-popover">
+                    <button onClick={() => handleExport('svg')}>🖼 Export as SVG</button>
+                    <button onClick={() => handleExport('pdf')}>📄 Export as PDF</button>
+                  </div>
+                </>
+              )}
+            </Panel>
           </ReactFlow>
 
           {showAddNode && canEdit && (
